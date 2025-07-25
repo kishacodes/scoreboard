@@ -79,6 +79,7 @@
     ehsFinal: number;
     opp: string;
     oppFinal: number;
+    comments: string;
   }
 
   const formatDate = (dateString: string): string => {
@@ -108,6 +109,11 @@
           <span class="team-score">${game.oppFinal}</span>
         </div>
       </div>
+      ${game.comments ? `
+      <div class="game-footer">
+        <p class="game-comment">${game.comments}</p>
+      </div>
+      ` : ''}
     </div>
   `;
 

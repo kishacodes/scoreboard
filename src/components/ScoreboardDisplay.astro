@@ -30,6 +30,11 @@ const toTitleCase = (str: string) => {
           <span class="team-score">{game.oppFinal}</span>
         </div>
       </div>
+      {game.comments && (
+        <div class="game-footer">
+          <p class="game-comment">{game.comments}</p>
+        </div>
+      )}
     </div>
   ))}
 </div>
