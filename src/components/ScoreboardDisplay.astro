@@ -1,0 +1,36 @@
+---
+// src/components/ScoreboardDisplay.astro
+const { games } = Astro.props;
+
+const formatDate = (dateString: string) => {
+  const options: Intl.DateTimeFormatOptions = { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' };
+  return new Date(dateString).toLocaleDateString('en-US', options);
+}
+
+const toTitleCase = (str: string) => {
+  if (!str) return '';
+  return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+}
+---
+
+<div class="scoreboard-grid">
+  {games.map(game => (
+    <div class="game-card">
+      <div class="game-header">
+        <span class="game-date">{formatDate(game.gameDate)}</span>
+        <span class="game-level">{toTitleCase(game.teams)}</span>
+      </div>
+      <div class="game-body">
+        <div class="team">
+          <span class="team-name">{game.ehs}</span>
+          <span class="team-score">{game.ehsFinal}</span>
+        </div>
+        <div class="team">
+          <span class="team-name">{game.opp}</span>
+          <span class="team-score">{game.oppFinal}</span>
+        </div>
+      </div>
+    </div>
+  ))}
+</div>
+

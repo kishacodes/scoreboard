@@ -1,0 +1,19 @@
+{
+  "name": "scoreboard",
+  "type": "module",
+  "version": "0.0.1",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "wrangler pages dev ./dist",
+    "deploy": "astro build && wrangler pages deploy ./dist"
+  },
+  "dependencies": {
+    "@astrojs/cloudflare": "^11.0.1",
+    "astro": "^4.11.5",
+    "hono": "^4.4.12"
+  },
+  "devDependencies": {
+    "wrangler": "^4.26.0"
+  }
+}

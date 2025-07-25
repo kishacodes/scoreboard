@@ -1,0 +1,10 @@
+name = "scoreboard"
+compatibility_date = "2024-07-25"
+
+pages_build_output_dir = "./dist"
+
+[[d1_databases]]
+binding = "DB" 
+database_name = "ehs-scores"
+database_id = "706387c2-df32-470d-aa12-56f150321009" 
+

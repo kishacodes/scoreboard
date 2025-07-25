@@ -1,0 +1,156 @@
+---
+// src/components/ScoreboardFilter.astro
+---
+
+<form id="filter-form" class="filter-container">
+  <div class="filter-group">
+    <label for="search-team">Team Name</label>
+    <input type="text" id="search-team" name="team" placeholder="Search for a team...">
+  </div>
+  <div class="filter-group">
+    <label for="filter-teams">Level</label>
+    <select id="filter-teams" name="teams">
+      <option value="">All Levels</option>
+      <option value="Varsity">Varsity</option>
+      <option value="Junior Varsity">Junior Varsity</option>
+      <option value="Freshman">Freshman</option>
+    </select>
+  </div>
+  <div class="filter-group">
+    <label for="filter-gameDate">Game Date</label>
+    <input type="date" id="filter-gameDate" name="gameDate">
+  </div>
+  <div class="filter-group">
+    <button type="reset">Clear Filters</button>
+  </div>
+</form>
+
+<style>
+  .filter-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+    padding: 1.5rem;
+    background-color: #ffffff;
+    border-radius: 8px;
+    margin-top: 2rem;
+    margin-bottom: 2rem;
+    border: 1px solid var(--border-color);
+  }
+
+  .filter-group {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+  }
+
+  .filter-group label {
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+    font-weight: 500;
+  }
+
+  .filter-group input,
+  .filter-group select {
+    padding: 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    font-size: 1rem;
+  }
+
+  .filter-group button {
+    padding: 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    font-size: 1rem;
+    background-color: var(--light-gray);
+    cursor: pointer;
+    align-self: flex-end;
+    height: 100%;
+  }
+</style>
+
+<script>
+  interface Game {
+    id: number;
+    gameDate: string;
+    teams: string;
+    ehs: string;
+    ehsFinal: number;
+    opp: string;
+    oppFinal: number;
+  }
+
+  const formatDate = (dateString: string): string => {
+    if (!dateString) return '';
+    const options: Intl.DateTimeFormatOptions = { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' };
+    return new Date(dateString).toLocaleDateString('en-US', options);
+  }
+
+  const toTitleCase = (str: string): string => {
+    if (!str) return '';
+    return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+  }
+
+  const createGameCardHTML = (game: Game): string => `
+    <div class="game-card">
+      <div class="game-header">
+        <span class="game-date">${formatDate(game.gameDate)}</span>
+        <span class="game-level">${toTitleCase(game.teams)}</span>
+      </div>
+      <div class="game-body">
+        <div class="team">
+          <span class="team-name">${game.ehs}</span>
+          <span class="team-score">${game.ehsFinal}</span>
+        </div>
+        <div class="team">
+          <span class="team-name">${game.opp}</span>
+          <span class="team-score">${game.oppFinal}</span>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const form = document.getElementById('filter-form') as HTMLFormElement;
+    const scoreboardContainer = document.querySelector('.scoreboard-container');
+
+    if (!form || !scoreboardContainer) {
+      console.error('Filter form or scoreboard container not found!');
+      return;
+    }
+
+    async function fetchAndRenderGames() {
+      const formData = new FormData(form);
+      const params = new URLSearchParams();
+
+      const team = formData.get('team') as string;
+      const teams = formData.get('teams') as string;
+      const gameDate = formData.get('gameDate') as string;
+
+      if (team) params.append('team', team);
+      if (teams) params.append('teams', teams);
+      if (gameDate) params.append('gameDate', gameDate);
+
+      const response = await fetch(`/api/games?${params.toString()}`);
+      const games: Game[] = await response.json();
+
+      if (games && games.length > 0) {
+        const gamesHTML = games.map(createGameCardHTML).join('');
+        scoreboardContainer.innerHTML = `<div class="scoreboard-grid">${gamesHTML}</div>`;
+      } else {
+        scoreboardContainer.innerHTML = `<p>No games found matching your criteria.</p>`;
+      }
+    }
+
+    let debounceTimer: number;
+    form.addEventListener('input', () => {
+      clearTimeout(debounceTimer);
+      debounceTimer = window.setTimeout(fetchAndRenderGames, 300);
+    });
+
+    form.addEventListener('reset', () => {
+      setTimeout(fetchAndRenderGames, 0);
+    });
+  });
+</script>

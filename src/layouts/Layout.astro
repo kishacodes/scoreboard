@@ -1,0 +1,92 @@
+---
+interface Props {
+	title: string;
+}
+
+const { title } = Astro.props;
+---
+
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="description" content="Emerson High School Football Scoreboard" />
+		<meta name="viewport" content="width=device-width" />
+		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+		<meta name="generator" content={Astro.generator} />
+		<title>{title}</title>
+	</head>
+	<body>
+		<slot />
+	</body>
+</html>
+<style is:global>
+	:root {
+		--navy-blue: #001f3f;
+		--light-gray: #f4f4f4;
+		--dark-gray: #333333;
+    --border-color: #dddddd;
+	}
+	html {
+		font-family: system-ui, sans-serif;
+		background-color: var(--light-gray);
+	}
+	body {
+		margin: 0;
+		color: var(--dark-gray);
+	}
+
+  .scoreboard-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.5rem;
+  }
+
+  .game-card {
+    background-color: #ffffff;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    overflow: hidden;
+  }
+
+  .game-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: var(--light-gray);
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+    color: var(--dark-gray);
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  .game-level {
+    font-weight: bold;
+  }
+
+  .game-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 1rem 1.5rem;
+  }
+
+  .team {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+  }
+
+  .team-name {
+    font-size: 1.2rem;
+    font-weight: 600;
+  }
+
+  .team-score {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: var(--navy-blue);
+  }
+</style>

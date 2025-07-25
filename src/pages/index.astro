@@ -1,0 +1,76 @@
+---
+import Layout from '../layouts/Layout.astro';
+import ScoreboardFilter from '../components/ScoreboardFilter.astro';
+import ScoreboardDisplay from '../components/ScoreboardDisplay.astro';
+
+// This code runs on the server, at build time or on request.
+let games = [];
+try {
+  const response = await fetch(`${Astro.url.origin}/api/games`);
+  if (response.ok) {
+    games = await response.json();
+  } else {
+    console.error(`API Error: ${response.status} ${response.statusText}`);
+  }
+} catch (error) {
+  console.error('Fetch Error:', (error as Error).message);
+}
+---
+
+<Layout title="Emerson Mavericks Football Scoreboard">
+  <main>
+    <header>
+      <h1>Emerson Mavericks Football</h1>
+    </header>
+    
+    <ScoreboardFilter />
+
+    <div class="scoreboard-container">
+      <ScoreboardDisplay games={games} />
+    </div>
+
+  </main>
+</Layout>
+<style>
+  main {
+    max-width: 1200px;
+    margin: auto;
+    padding: 1.5rem;
+  }
+  header {
+    background-color: var(--navy-blue);
+    color: white;
+    padding: 2rem 1.5rem;
+    text-align: center;
+    border-radius: 0 0 8px 8px;
+  }
+  h1 {
+    margin: 0;
+    font-size: 2.5rem;
+  }
+  .scoreboard-container {
+    margin-top: 2rem;
+  }
+</style>
+
+<style>
+  main {
+    max-width: 1200px;
+    margin: auto;
+    padding: 1.5rem;
+  }
+  header {
+    background-color: var(--navy-blue);
+    color: white;
+    padding: 2rem 1.5rem;
+    text-align: center;
+    border-radius: 0 0 8px 8px;
+  }
+  h1 {
+    margin: 0;
+    font-size: 2.5rem;
+  }
+  .scoreboard-container {
+    margin-top: 2rem;
+  }
+</style>
