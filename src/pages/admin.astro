@@ -1,0 +1,33 @@
+---
+import Layout from '../layouts/Layout.astro';
+import ScoreboardFilter from '../components/ScoreboardFilter.astro';
+import AdminScoreboardDisplay from '../components/AdminScoreboardDisplay.astro';
+
+// Fetch all games on initial load
+const { DB } = Astro.locals.runtime.env;
+const { results: games } = await DB.prepare("SELECT * FROM games2025 ORDER BY gameDate DESC").all();
+---
+
+<Layout title="Scoreboard Admin - Emerson Knights Football">
+	<main class="container">
+		<h1>Scoreboard Admin</h1>
+		<ScoreboardFilter />
+		<div class="scoreboard-container">
+			<AdminScoreboardDisplay games={games} />
+		</div>
+	</main>
+</Layout>
+
+<style>
+	.container {
+		max-width: 1200px;
+		margin: 0 auto;
+		padding: 2rem;
+	}
+	h1 {
+		font-size: 2.5rem;
+		color: var(--navy-blue);
+		text-align: center;
+		margin-bottom: 2rem;
+	}
+</style>

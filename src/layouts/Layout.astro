@@ -17,6 +17,12 @@ const { title } = Astro.props;
 		<title>{title}</title>
 	</head>
 	<body>
+		<header>
+			<nav>
+				<a href="/">Scoreboard</a>
+				<a href="/admin">Admin</a>
+			</nav>
+		</header>
 		<slot />
 	</body>
 </html>
@@ -34,6 +40,28 @@ const { title } = Astro.props;
 	body {
 		margin: 0;
 		color: var(--dark-gray);
+	}
+
+	header {
+		background-color: var(--navy-blue);
+		padding: 1rem 2rem;
+		box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+	}
+
+	nav {
+		display: flex;
+		gap: 1.5rem;
+	}
+
+	nav a {
+		color: #ffffff;
+		text-decoration: none;
+		font-size: 1.1rem;
+		font-weight: 500;
+	}
+
+	nav a:hover {
+		text-decoration: underline;
 	}
 
   .scoreboard-grid {

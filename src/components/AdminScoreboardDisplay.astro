@@ -1,0 +1,118 @@
+---
+// src/components/AdminScoreboardDisplay.astro
+const { games } = Astro.props;
+
+const formatDate = (dateString: string) => {
+  const options: Intl.DateTimeFormatOptions = { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' };
+  return new Date(dateString).toLocaleDateString('en-US', options);
+}
+
+const toTitleCase = (str: string) => {
+  if (!str) return '';
+  return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+}
+---
+
+<div class="scoreboard-grid" id="admin-scoreboard">
+  {games.map(game => (
+    <div class="game-card" data-game-id={game.id}>
+      <div class="game-header">
+        <span class="game-date">{formatDate(game.gameDate)}</span>
+        <span class="game-level">{toTitleCase(game.teams)}</span>
+      </div>
+      <div class="game-body">
+        <div class="team">
+          <span class="team-name">{game.ehs}</span>
+          <input type="number" class="team-score-input" value={game.ehsFinal} />
+        </div>
+        <div class="team">
+          <span class="team-name">{game.opp}</span>
+          <input type="number" class="team-score-input" value={game.oppFinal} />
+        </div>
+      </div>
+      <div class="game-footer">
+        <button class="update-button">Update Score</button>
+      </div>
+    </div>
+  ))}
+</div>
+
+<style>
+  .team-score-input {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: var(--navy-blue);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 0.5rem;
+    width: 70px;
+    text-align: center;
+  }
+
+  .update-button {
+    width: 100%;
+    padding: 0.75rem;
+    font-size: 1rem;
+    font-weight: bold;
+    color: #ffffff;
+    background-color: var(--navy-blue);
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+  }
+
+  .update-button:hover {
+    background-color: #003366; /* A darker navy */
+  }
+</style>
+
+<script>
+  document.addEventListener('click', async (event) => {
+    const target = event.target as HTMLElement;
+    if (!target.classList.contains('update-button')) return;
+
+    const card = target.closest('.game-card') as HTMLElement;
+    const gameId = card.dataset.gameId;
+    const scoreInputs = card.querySelectorAll('.team-score-input') as NodeListOf<HTMLInputElement>;
+
+    const ehsFinal = scoreInputs[0].value;
+    const oppFinal = scoreInputs[1].value;
+
+    target.textContent = 'Updating...';
+    target.setAttribute('disabled', 'true');
+
+    try {
+      const response = await fetch(`/api/games/${gameId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          ehsFinal: parseInt(ehsFinal, 10),
+          oppFinal: parseInt(oppFinal, 10)
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update score');
+      }
+
+      target.textContent = 'Updated!';
+      setTimeout(() => {
+        target.textContent = 'Update Score';
+        target.removeAttribute('disabled');
+      }, 2000);
+
+    } catch (error) {
+      console.error('Update Error:', error);
+      target.textContent = 'Error!';
+      target.style.backgroundColor = '#d9534f'; // Red color for error
+      setTimeout(() => {
+        target.textContent = 'Update Score';
+        target.removeAttribute('disabled');
+        target.style.backgroundColor = ''; // Revert color
+      }, 3000);
+    }
+  });
+</script>
