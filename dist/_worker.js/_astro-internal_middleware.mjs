@@ -1,6 +1,6 @@
 globalThis.process ??= {}; globalThis.process.env ??= {};
-import { d as defineMiddleware, s as sequence } from './chunks/index_DITV6mYY.mjs';
-import './chunks/astro-designed-error-pages_CFFETS9y.mjs';
+import { d as defineMiddleware, s as sequence } from './chunks/index_Fp9ZECJv.mjs';
+import './chunks/astro-designed-error-pages_2zR0lYYZ.mjs';
 
 // src/compose.ts
 var compose = (middleware, onError, onNotFound) => {
@@ -1504,6 +1504,21 @@ app.get("/games", async (c) => {
   } catch (e) {
     console.error("D1 Error:", e.message);
     return c.json({ error: "Failed to fetch games" }, 500);
+  }
+});
+app.patch("/games/:id", async (c) => {
+  const id = c.req.param("id");
+  const { ehsFinal, oppFinal } = await c.req.json();
+  if (!id || ehsFinal === void 0 || oppFinal === void 0) {
+    return c.json({ error: "Missing required fields" }, 400);
+  }
+  try {
+    const query = "UPDATE games2025 SET ehsFinal = ?, oppFinal = ? WHERE id = ?";
+    await c.env.DB.prepare(query).bind(ehsFinal, oppFinal, id).run();
+    return c.json({ success: true, message: `Game ${id} updated.` });
+  } catch (e) {
+    console.error("D1 Update Error:", e.message);
+    return c.json({ error: "Failed to update game" }, 500);
   }
 });
 

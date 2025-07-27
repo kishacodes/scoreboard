@@ -1,19 +1,8 @@
 globalThis.process ??= {}; globalThis.process.env ??= {};
-import { c as createComponent, a as createAstro, b as addAttribute, r as renderHead, d as renderSlot, e as renderTemplate, m as maybeRenderHead, f as renderComponent } from '../chunks/astro/server_BHnmQ_pU.mjs';
+import { c as createComponent, a as createAstro, m as maybeRenderHead, r as renderTemplate, d as renderComponent } from '../chunks/astro/server_DDu7V7oX.mjs';
+import { a as $$Layout, $ as $$ScoreboardFilter } from '../chunks/ScoreboardFilter_BpvavrHa.mjs';
 /* empty css                                 */
 export { renderers } from '../renderers.mjs';
-
-const $$Astro$2 = createAstro();
-const $$Layout = createComponent(($$result, $$props, $$slots) => {
-  const Astro2 = $$result.createAstro($$Astro$2, $$props, $$slots);
-  Astro2.self = $$Layout;
-  const { title } = Astro2.props;
-  return renderTemplate`<html lang="en"> <head><meta charset="UTF-8"><meta name="description" content="Emerson High School Football Scoreboard"><meta name="viewport" content="width=device-width"><link rel="icon" type="image/svg+xml" href="/favicon.svg"><meta name="generator"${addAttribute(Astro2.generator, "content")}><title>${title}</title>${renderHead()}</head> <body> ${renderSlot($$result, $$slots["default"])} </body></html>`;
-}, "/Users/kisha/serverless/scoreboard/src/layouts/Layout.astro", void 0);
-
-const $$ScoreboardFilter = createComponent(async ($$result, $$props, $$slots) => {
-  return renderTemplate`${maybeRenderHead()}<form id="filter-form" class="filter-container" data-astro-cid-egvsxq6h> <div class="filter-group" data-astro-cid-egvsxq6h> <label for="search-team" data-astro-cid-egvsxq6h>Team Name</label> <input type="text" id="search-team" name="team" placeholder="Search for a team..." data-astro-cid-egvsxq6h> </div> <div class="filter-group" data-astro-cid-egvsxq6h> <label for="filter-teams" data-astro-cid-egvsxq6h>Level</label> <select id="filter-teams" name="teams" data-astro-cid-egvsxq6h> <option value="" data-astro-cid-egvsxq6h>All Levels</option> <option value="Varsity" data-astro-cid-egvsxq6h>Varsity</option> <option value="Junior Varsity" data-astro-cid-egvsxq6h>Junior Varsity</option> <option value="Freshman" data-astro-cid-egvsxq6h>Freshman</option> </select> </div> <div class="filter-group" data-astro-cid-egvsxq6h> <label for="filter-gameDate" data-astro-cid-egvsxq6h>Game Date</label> <input type="date" id="filter-gameDate" name="gameDate" data-astro-cid-egvsxq6h> </div> <div class="filter-group" data-astro-cid-egvsxq6h> <button type="reset" data-astro-cid-egvsxq6h>Clear Filters</button> </div> </form>  `;
-}, "/Users/kisha/serverless/scoreboard/src/components/ScoreboardFilter.astro", void 0);
 
 const $$Astro$1 = createAstro();
 const $$ScoreboardDisplay = createComponent(($$result, $$props, $$slots) => {
@@ -28,7 +17,7 @@ const $$ScoreboardDisplay = createComponent(($$result, $$props, $$slots) => {
     if (!str) return "";
     return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
   };
-  return renderTemplate`${maybeRenderHead()}<div class="scoreboard-grid"> ${games.map((game) => renderTemplate`<div class="game-card"> <div class="game-header"> <span class="game-date">${formatDate(game.gameDate)}</span> <span class="game-level">${toTitleCase(game.teams)}</span> </div> <div class="game-body"> <div class="team"> <span class="team-name">${game.ehs}</span> <span class="team-score">${game.ehsFinal}</span> </div> <div class="team"> <span class="team-name">${game.opp}</span> <span class="team-score">${game.oppFinal}</span> </div> </div> </div>`)} </div>`;
+  return renderTemplate`${maybeRenderHead()}<div class="scoreboard-grid"> ${games.map((game) => renderTemplate`<div class="game-card"> <div class="game-header"> <span class="game-date">${formatDate(game.gameDate)}</span> <span class="game-level">${toTitleCase(game.teams)}</span> </div> <div class="game-body"> <div class="team"> <span class="team-name">${game.ehs}</span> <span class="team-score">${game.ehsFinal}</span> </div> <div class="team"> <span class="team-name">${game.opp}</span> <span class="team-score">${game.oppFinal}</span> </div> </div> ${game.comments && renderTemplate`<div class="game-footer"> <p class="game-comment">${game.comments}</p> </div>`} </div>`)} </div>`;
 }, "/Users/kisha/serverless/scoreboard/src/components/ScoreboardDisplay.astro", void 0);
 
 const $$Astro = createAstro();

@@ -6,13 +6,15 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "wrangler pages dev ./dist",
-    "dev:remote": "wrangler pages dev --d1=DB -- npm run dev",
+    "dev:remote": "wrangler pages dev --proxy 4321 --d1=DB -- npm run dev",
     "deploy": "astro build && wrangler pages deploy ./dist"
   },
   "dependencies": {
     "@astrojs/cloudflare": "^11.0.1",
     "astro": "^4.11.5",
-    "hono": "^4.4.12"
+    "bcryptjs": "^3.0.2",
+    "hono": "^4.4.12",
+    "jsonwebtoken": "^9.0.2"
   },
   "devDependencies": {
     "wrangler": "^4.26.0"
