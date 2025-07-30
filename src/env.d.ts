@@ -9,5 +9,11 @@ declare namespace App {
             };
             ctx: ExecutionContext;
         };
+        user?: {
+            userid: string;
+            email: string;
+            role: string;
+            [key: string]: unknown;
+        }
     }
 }

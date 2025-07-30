@@ -14,7 +14,7 @@
     "astro": "^4.11.5",
     "bcryptjs": "^3.0.2",
     "hono": "^4.4.12",
-    "jsonwebtoken": "^9.0.2"
+    "jose": "^6.0.12"
   },
   "devDependencies": {
     "wrangler": "^4.26.0"

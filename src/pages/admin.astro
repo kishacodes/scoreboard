@@ -2,6 +2,22 @@
 import Layout from '../layouts/Layout.astro';
 import ScoreboardFilter from '../components/ScoreboardFilter.astro';
 import AdminScoreboardDisplay from '../components/AdminScoreboardDisplay.astro';
+import { jwtVerify } from 'jose';
+
+const JWT_SECRET = new TextEncoder().encode('REPLACE_THIS_WITH_A_SECRET_KEY');
+
+// SSR Auth check
+const authCookie = Astro.cookies.get('auth')?.value;
+if (!authCookie) {
+  throw Astro.redirect('/login');
+}
+try {
+  const { payload } = await jwtVerify(authCookie, JWT_SECRET);
+  // Optionally check role: if (payload.role !== 'admin') throw Astro.redirect('/login');
+  Astro.locals.user = payload;
+} catch (e) {
+  throw Astro.redirect('/login');
+}
 
 // Fetch all games on initial load
 const { DB } = Astro.locals.runtime.env;

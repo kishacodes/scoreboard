@@ -1,7 +1,7 @@
 ---
 import Layout from '../layouts/Layout.astro';
 ---
-<Layout title="Login - Emerson Knights Football">
+<Layout title="Login - Emerson Mavericks Football">
   <main class="container">
     <h1>Login</h1>
     <form id="login-form" class="login-form">
@@ -70,8 +70,8 @@ import Layout from '../layouts/Layout.astro';
     e.preventDefault();
     const errorEl = document.getElementById('login-error');
     errorEl.textContent = '';
-    const email = document.getElementById('email').value;
-    const password = document.getElementById('password').value;
+    const email = (document.getElementById('email') as HTMLInputElement).value;
+    const password = (document.getElementById('password') as HTMLInputElement).value;
     const res = await fetch('/api/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -81,7 +81,11 @@ import Layout from '../layouts/Layout.astro';
       window.location.href = '/admin';
     } else {
       const data = await res.json();
-      errorEl.textContent = data.error || 'Invalid login.';
+      if (data && typeof data === 'object' && 'error' in data && typeof data.error === 'string') {
+        errorEl.textContent = data.error;
+      } else {
+        errorEl.textContent = 'Invalid login.';
+      }
     }
   });
 </script>

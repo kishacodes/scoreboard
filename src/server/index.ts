@@ -4,11 +4,11 @@ type Bindings = {
   DB: D1Database;
 }
 
-import jwt from 'jsonwebtoken';
+import { SignJWT } from 'jose';
 import bcrypt from 'bcryptjs';
 
-const JWT_SECRET = 'REPLACE_THIS_WITH_A_SECRET'; // TODO: Use env var for production
-const JWT_EXPIRY = '2h';
+const JWT_SECRET = new TextEncoder().encode('REPLACE_THIS_WITH_A_SECRET_KEY'); // TODO: Use env var for production
+const JWT_EXPIRY = 2 * 60 * 60; // 2 hours in seconds
 
 export const app = new Hono<{ Bindings: Bindings }>().basePath('/api');
 
@@ -58,6 +58,7 @@ app.post('/login', async (c) => {
   try {
     const { results } = await c.env.DB.prepare("SELECT * FROM users WHERE email = ?").bind(email).all();
     const user = results && results[0];
+    console.log('DEBUG user:', user);
     if (!user) {
       return c.json({ error: 'Invalid email or password.' }, 401);
     }
@@ -65,9 +66,12 @@ app.post('/login', async (c) => {
     if (!valid) {
       return c.json({ error: 'Invalid email or password.' }, 401);
     }
-    // Create JWT
-    const token = jwt.sign({ userid: user.userid, email: user.email, role: user.role }, JWT_SECRET, { expiresIn: JWT_EXPIRY });
-    c.header('Set-Cookie', `auth=${token}; HttpOnly; Secure; Path=/; SameSite=Strict; Max-Age=7200`); // 2h expiry
+    // Create JWT with jose
+    const token = await new SignJWT({ userid: user.userid, email: user.email, role: user.role })
+      .setProtectedHeader({ alg: 'HS256' })
+      .setExpirationTime(`${JWT_EXPIRY}s`)
+      .sign(JWT_SECRET);
+    c.header('Set-Cookie', `auth=${token}; HttpOnly; Secure; Path=/; SameSite=Strict; Max-Age=${JWT_EXPIRY}`);
     return c.json({ success: true });
   } catch (e) {
     console.error('Login error:', (e as Error).message);
