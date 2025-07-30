@@ -1,0 +1,11 @@
+---
+// This page logs the user out by clearing the auth cookie and redirecting to login
+Astro.cookies.set('auth', '', {
+  path: '/',
+  httpOnly: true,
+  secure: true,
+  sameSite: 'strict',
+  maxAge: 0,
+});
+throw Astro.redirect('/login');
+---
