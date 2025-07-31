@@ -1550,6 +1550,32 @@ class JOSEError extends Error {
         Error.captureStackTrace?.(this, this.constructor);
     }
 }
+class JWTClaimValidationFailed extends JOSEError {
+    static code = 'ERR_JWT_CLAIM_VALIDATION_FAILED';
+    code = 'ERR_JWT_CLAIM_VALIDATION_FAILED';
+    claim;
+    reason;
+    payload;
+    constructor(message, payload, claim = 'unspecified', reason = 'unspecified') {
+        super(message, { cause: { claim, reason, payload } });
+        this.claim = claim;
+        this.reason = reason;
+        this.payload = payload;
+    }
+}
+class JWTExpired extends JOSEError {
+    static code = 'ERR_JWT_EXPIRED';
+    code = 'ERR_JWT_EXPIRED';
+    claim;
+    reason;
+    payload;
+    constructor(message, payload, claim = 'unspecified', reason = 'unspecified') {
+        super(message, { cause: { claim, reason, payload } });
+        this.claim = claim;
+        this.reason = reason;
+        this.payload = payload;
+    }
+}
 class JOSENotSupported extends JOSEError {
     static code = 'ERR_JOSE_NOT_SUPPORTED';
     code = 'ERR_JOSE_NOT_SUPPORTED';
@@ -1561,6 +1587,13 @@ class JWSInvalid extends JOSEError {
 class JWTInvalid extends JOSEError {
     static code = 'ERR_JWT_INVALID';
     code = 'ERR_JWT_INVALID';
+}
+class JWSSignatureVerificationFailed extends JOSEError {
+    static code = 'ERR_JWS_SIGNATURE_VERIFICATION_FAILED';
+    code = 'ERR_JWS_SIGNATURE_VERIFICATION_FAILED';
+    constructor(message = 'signature verification failed', options) {
+        super(message, options);
+    }
 }
 
 function unusable(name, prop = 'algorithm.name') {
@@ -1585,7 +1618,7 @@ function getNamedCurve(alg) {
     }
 }
 function checkUsage(key, usage) {
-    if (!key.usages.includes(usage)) {
+    if (usage && !key.usages.includes(usage)) {
         throw new TypeError(`CryptoKey does not support this operation, its usages must include ${usage}.`);
     }
 }
@@ -2062,7 +2095,7 @@ const jwkMatchesOp = (alg, key, usage) => {
     if (Array.isArray(key.key_ops)) {
         let expectedKeyOp;
         switch (true) {
-            case usage === 'sign':
+            case usage === 'sign' || usage === 'verify':
             case alg === 'dir':
             case alg.includes('CBC-HS'):
                 expectedKeyOp = usage;
@@ -2072,13 +2105,13 @@ const jwkMatchesOp = (alg, key, usage) => {
                 break;
             case /^A\d{3}(?:GCM)?(?:KW)?$/.test(alg):
                 if (!alg.includes('GCM') && alg.endsWith('KW')) {
-                    expectedKeyOp = 'unwrapKey';
+                    expectedKeyOp = usage === 'encrypt' ? 'wrapKey' : 'unwrapKey';
                 }
                 else {
                     expectedKeyOp = usage;
                 }
                 break;
-            case usage === 'encrypt':
+            case usage === 'encrypt' && alg.startsWith('RSA'):
                 expectedKeyOp = 'wrapKey';
                 break;
             case usage === 'decrypt':
@@ -2196,6 +2229,140 @@ const getSignKey = async (alg, key, usage) => {
     return key;
 };
 
+const verify = async (alg, key, signature, data) => {
+    const cryptoKey = await getSignKey(alg, key, 'verify');
+    checkKeyLength(alg, cryptoKey);
+    const algorithm = subtleAlgorithm(alg, cryptoKey.algorithm);
+    try {
+        return await crypto.subtle.verify(algorithm, cryptoKey, signature, data);
+    }
+    catch {
+        return false;
+    }
+};
+
+async function flattenedVerify(jws, key, options) {
+    if (!isObject(jws)) {
+        throw new JWSInvalid('Flattened JWS must be an object');
+    }
+    if (jws.protected === undefined && jws.header === undefined) {
+        throw new JWSInvalid('Flattened JWS must have either of the "protected" or "header" members');
+    }
+    if (jws.protected !== undefined && typeof jws.protected !== 'string') {
+        throw new JWSInvalid('JWS Protected Header incorrect type');
+    }
+    if (jws.payload === undefined) {
+        throw new JWSInvalid('JWS Payload missing');
+    }
+    if (typeof jws.signature !== 'string') {
+        throw new JWSInvalid('JWS Signature missing or incorrect type');
+    }
+    if (jws.header !== undefined && !isObject(jws.header)) {
+        throw new JWSInvalid('JWS Unprotected Header incorrect type');
+    }
+    let parsedProt = {};
+    if (jws.protected) {
+        try {
+            const protectedHeader = decode(jws.protected);
+            parsedProt = JSON.parse(decoder.decode(protectedHeader));
+        }
+        catch {
+            throw new JWSInvalid('JWS Protected Header is invalid');
+        }
+    }
+    if (!isDisjoint(parsedProt, jws.header)) {
+        throw new JWSInvalid('JWS Protected and JWS Unprotected Header Parameter names must be disjoint');
+    }
+    const joseHeader = {
+        ...parsedProt,
+        ...jws.header,
+    };
+    const extensions = validateCrit(JWSInvalid, new Map([['b64', true]]), options?.crit, parsedProt, joseHeader);
+    let b64 = true;
+    if (extensions.has('b64')) {
+        b64 = parsedProt.b64;
+        if (typeof b64 !== 'boolean') {
+            throw new JWSInvalid('The "b64" (base64url-encode payload) Header Parameter must be a boolean');
+        }
+    }
+    const { alg } = joseHeader;
+    if (typeof alg !== 'string' || !alg) {
+        throw new JWSInvalid('JWS "alg" (Algorithm) Header Parameter missing or invalid');
+    }
+    if (b64) {
+        if (typeof jws.payload !== 'string') {
+            throw new JWSInvalid('JWS Payload must be a string');
+        }
+    }
+    else if (typeof jws.payload !== 'string' && !(jws.payload instanceof Uint8Array)) {
+        throw new JWSInvalid('JWS Payload must be a string or an Uint8Array instance');
+    }
+    let resolvedKey = false;
+    if (typeof key === 'function') {
+        key = await key(parsedProt, jws);
+        resolvedKey = true;
+    }
+    checkKeyType(alg, key, 'verify');
+    const data = concat(encoder.encode(jws.protected ?? ''), encoder.encode('.'), typeof jws.payload === 'string' ? encoder.encode(jws.payload) : jws.payload);
+    let signature;
+    try {
+        signature = decode(jws.signature);
+    }
+    catch {
+        throw new JWSInvalid('Failed to base64url decode the signature');
+    }
+    const k = await normalizeKey(key, alg);
+    const verified = await verify(alg, k, signature, data);
+    if (!verified) {
+        throw new JWSSignatureVerificationFailed();
+    }
+    let payload;
+    if (b64) {
+        try {
+            payload = decode(jws.payload);
+        }
+        catch {
+            throw new JWSInvalid('Failed to base64url decode the payload');
+        }
+    }
+    else if (typeof jws.payload === 'string') {
+        payload = encoder.encode(jws.payload);
+    }
+    else {
+        payload = jws.payload;
+    }
+    const result = { payload };
+    if (jws.protected !== undefined) {
+        result.protectedHeader = parsedProt;
+    }
+    if (jws.header !== undefined) {
+        result.unprotectedHeader = jws.header;
+    }
+    if (resolvedKey) {
+        return { ...result, key: k };
+    }
+    return result;
+}
+
+async function compactVerify(jws, key, options) {
+    if (jws instanceof Uint8Array) {
+        jws = decoder.decode(jws);
+    }
+    if (typeof jws !== 'string') {
+        throw new JWSInvalid('Compact JWS must be a string or Uint8Array');
+    }
+    const { 0: protectedHeader, 1: payload, 2: signature, length } = jws.split('.');
+    if (length !== 3) {
+        throw new JWSInvalid('Invalid Compact JWS');
+    }
+    const verified = await flattenedVerify({ payload, protected: protectedHeader, signature }, key, options);
+    const result = { payload: verified.payload, protectedHeader: verified.protectedHeader };
+    if (typeof key === 'function') {
+        return { ...result, key: verified.key };
+    }
+    return result;
+}
+
 const epoch = (date) => Math.floor(date.getTime() / 1000);
 
 const minute = 60;
@@ -2259,6 +2426,110 @@ function validateInput(label, input) {
         throw new TypeError(`Invalid ${label} input`);
     }
     return input;
+}
+const normalizeTyp = (value) => {
+    if (value.includes('/')) {
+        return value.toLowerCase();
+    }
+    return `application/${value.toLowerCase()}`;
+};
+const checkAudiencePresence = (audPayload, audOption) => {
+    if (typeof audPayload === 'string') {
+        return audOption.includes(audPayload);
+    }
+    if (Array.isArray(audPayload)) {
+        return audOption.some(Set.prototype.has.bind(new Set(audPayload)));
+    }
+    return false;
+};
+function validateClaimsSet(protectedHeader, encodedPayload, options = {}) {
+    let payload;
+    try {
+        payload = JSON.parse(decoder.decode(encodedPayload));
+    }
+    catch {
+    }
+    if (!isObject(payload)) {
+        throw new JWTInvalid('JWT Claims Set must be a top-level JSON object');
+    }
+    const { typ } = options;
+    if (typ &&
+        (typeof protectedHeader.typ !== 'string' ||
+            normalizeTyp(protectedHeader.typ) !== normalizeTyp(typ))) {
+        throw new JWTClaimValidationFailed('unexpected "typ" JWT header value', payload, 'typ', 'check_failed');
+    }
+    const { requiredClaims = [], issuer, subject, audience, maxTokenAge } = options;
+    const presenceCheck = [...requiredClaims];
+    if (maxTokenAge !== undefined)
+        presenceCheck.push('iat');
+    if (audience !== undefined)
+        presenceCheck.push('aud');
+    if (subject !== undefined)
+        presenceCheck.push('sub');
+    if (issuer !== undefined)
+        presenceCheck.push('iss');
+    for (const claim of new Set(presenceCheck.reverse())) {
+        if (!(claim in payload)) {
+            throw new JWTClaimValidationFailed(`missing required "${claim}" claim`, payload, claim, 'missing');
+        }
+    }
+    if (issuer &&
+        !(Array.isArray(issuer) ? issuer : [issuer]).includes(payload.iss)) {
+        throw new JWTClaimValidationFailed('unexpected "iss" claim value', payload, 'iss', 'check_failed');
+    }
+    if (subject && payload.sub !== subject) {
+        throw new JWTClaimValidationFailed('unexpected "sub" claim value', payload, 'sub', 'check_failed');
+    }
+    if (audience &&
+        !checkAudiencePresence(payload.aud, typeof audience === 'string' ? [audience] : audience)) {
+        throw new JWTClaimValidationFailed('unexpected "aud" claim value', payload, 'aud', 'check_failed');
+    }
+    let tolerance;
+    switch (typeof options.clockTolerance) {
+        case 'string':
+            tolerance = secs(options.clockTolerance);
+            break;
+        case 'number':
+            tolerance = options.clockTolerance;
+            break;
+        case 'undefined':
+            tolerance = 0;
+            break;
+        default:
+            throw new TypeError('Invalid clockTolerance option type');
+    }
+    const { currentDate } = options;
+    const now = epoch(currentDate || new Date());
+    if ((payload.iat !== undefined || maxTokenAge) && typeof payload.iat !== 'number') {
+        throw new JWTClaimValidationFailed('"iat" claim must be a number', payload, 'iat', 'invalid');
+    }
+    if (payload.nbf !== undefined) {
+        if (typeof payload.nbf !== 'number') {
+            throw new JWTClaimValidationFailed('"nbf" claim must be a number', payload, 'nbf', 'invalid');
+        }
+        if (payload.nbf > now + tolerance) {
+            throw new JWTClaimValidationFailed('"nbf" claim timestamp check failed', payload, 'nbf', 'check_failed');
+        }
+    }
+    if (payload.exp !== undefined) {
+        if (typeof payload.exp !== 'number') {
+            throw new JWTClaimValidationFailed('"exp" claim must be a number', payload, 'exp', 'invalid');
+        }
+        if (payload.exp <= now - tolerance) {
+            throw new JWTExpired('"exp" claim timestamp check failed', payload, 'exp', 'check_failed');
+        }
+    }
+    if (maxTokenAge) {
+        const age = now - payload.iat;
+        const max = typeof maxTokenAge === 'number' ? maxTokenAge : secs(maxTokenAge);
+        if (age - tolerance > max) {
+            throw new JWTExpired('"iat" claim timestamp check failed (too far in the past)', payload, 'iat', 'check_failed');
+        }
+        if (age < 0 - tolerance) {
+            throw new JWTClaimValidationFailed('"iat" claim timestamp check failed (it should be in the past)', payload, 'iat', 'check_failed');
+        }
+    }
+    return payload;
 }
 class JWTClaimsBuilder {
     #payload;
@@ -2328,6 +2599,19 @@ class JWTClaimsBuilder {
             this.#payload.iat = validateInput('setIssuedAt', value);
         }
     }
+}
+
+async function jwtVerify(jwt, key, options) {
+    const verified = await compactVerify(jwt, key, options);
+    if (verified.protectedHeader.crit?.includes('b64') && verified.protectedHeader.b64 === false) {
+        throw new JWTInvalid('JWTs MUST NOT use unencoded payload');
+    }
+    const payload = validateClaimsSet(verified.protectedHeader, verified.payload, options);
+    const result = { payload, protectedHeader: verified.protectedHeader };
+    if (typeof key === 'function') {
+        return { ...result, key: verified.key };
+    }
+    return result;
 }
 
 const sign = async (alg, key, data) => {
@@ -3684,6 +3968,7 @@ app.post("/login", async (c) => {
   try {
     const { results } = await c.env.DB.prepare("SELECT * FROM users WHERE email = ?").bind(email).all();
     const user = results && results[0];
+    console.log("DEBUG user:", user);
     if (!user) {
       return c.json({ error: "Invalid email or password." }, 401);
     }
@@ -3717,9 +4002,20 @@ app.patch("/games/:id", async (c) => {
 
 const onRequest$2 = defineMiddleware(async (context, next) => {
   const runtime = context.locals.runtime;
-  if (context.url.pathname.startsWith("/api")) {
+  const { url, cookies, redirect, locals } = context;
+  if (url.pathname.startsWith("/api")) {
     if (runtime) {
       return app.fetch(context.request, runtime.env, runtime.ctx);
+    }
+  }
+  if (url.pathname.startsWith("/admin")) {
+    const token = cookies.get("auth")?.value;
+    if (!token) return redirect("/login");
+    try {
+      const { payload } = await jwtVerify(token, new TextEncoder().encode("REPLACE_THIS_WITH_A_SECRET_KEY"));
+      locals.user = payload;
+    } catch (e) {
+      return redirect("/login");
     }
   }
   return next();

@@ -24,8 +24,12 @@ app.get('/games', async (c) => {
     bindings.push(`%${team}%`, `%${team}%`);
   }
   if (teams) {
-    conditions.push("LOWER(teams) = LOWER(?)");
-    bindings.push(teams);
+    if (teams.toLowerCase() === 'freshmen') {
+      conditions.push("(LOWER(teams) = 'freshmen' OR LOWER(teams) = 'freshman')");
+    } else {
+      conditions.push("LOWER(teams) = LOWER(?)");
+      bindings.push(teams);
+    }
   }
   if (gameDate) {
     conditions.push("gameDate = ?");
