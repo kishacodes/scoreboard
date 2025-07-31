@@ -5,7 +5,7 @@ import AdminScoreboardDisplay from '../components/AdminScoreboardDisplay.astro';
 
 // Fetch all games on initial load
 const { DB } = Astro.locals.runtime.env;
-const { results: games } = await DB.prepare("SELECT * FROM games2025 ORDER BY gameDate DESC").all();
+const { results: games } = await DB.prepare("SELECT * FROM games2025 ORDER BY gameDate ASC").all();
 ---
 
 <Layout title="Scoreboard Admin - Emerson Knights Football">

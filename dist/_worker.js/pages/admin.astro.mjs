@@ -1,6 +1,6 @@
 globalThis.process ??= {}; globalThis.process.env ??= {};
 import { c as createComponent, a as createAstro, m as maybeRenderHead, b as addAttribute, r as renderTemplate, d as renderComponent } from '../chunks/astro/server_DDu7V7oX.mjs';
-import { $ as $$Layout } from '../chunks/Layout_D0ZliRir.mjs';
+import { $ as $$Layout } from '../chunks/Layout_BEtQDXSl.mjs';
 import { $ as $$ScoreboardFilter } from '../chunks/ScoreboardFilter_CfQm_gX1.mjs';
 /* empty css                                 */
 export { renderers } from '../renderers.mjs';
@@ -26,7 +26,7 @@ const $$Admin = createComponent(async ($$result, $$props, $$slots) => {
   const Astro2 = $$result.createAstro($$Astro, $$props, $$slots);
   Astro2.self = $$Admin;
   const { DB } = Astro2.locals.runtime.env;
-  const { results: games } = await DB.prepare("SELECT * FROM games2025 ORDER BY gameDate DESC").all();
+  const { results: games } = await DB.prepare("SELECT * FROM games2025 ORDER BY gameDate ASC").all();
   return renderTemplate`${renderComponent($$result, "Layout", $$Layout, { "title": "Scoreboard Admin - Emerson Knights Football", "data-astro-cid-2zp6q64z": true }, { "default": async ($$result2) => renderTemplate` ${maybeRenderHead()}<main class="container" data-astro-cid-2zp6q64z> <h1 data-astro-cid-2zp6q64z>Scoreboard Admin</h1> ${renderComponent($$result2, "ScoreboardFilter", $$ScoreboardFilter, { "data-astro-cid-2zp6q64z": true })} <div class="scoreboard-container" data-astro-cid-2zp6q64z> ${renderComponent($$result2, "AdminScoreboardDisplay", $$AdminScoreboardDisplay, { "games": games, "data-astro-cid-2zp6q64z": true })} </div> </main> ` })} `;
 }, "/Users/kisha/serverless/scoreboard/src/pages/admin.astro", void 0);
 
