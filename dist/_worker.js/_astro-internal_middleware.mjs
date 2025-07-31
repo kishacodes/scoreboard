@@ -3955,7 +3955,7 @@ app.get("/games", async (c) => {
   if (conditions.length > 0) {
     query += " WHERE " + conditions.join(" AND ");
   }
-  query += " ORDER BY gameDate DESC";
+  query += " ORDER BY gameDate ASC";
   try {
     const { results } = await c.env.DB.prepare(query).bind(...bindings).all();
     return c.json(results);

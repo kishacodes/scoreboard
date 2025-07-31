@@ -40,7 +40,7 @@ app.get('/games', async (c) => {
     query += " WHERE " + conditions.join(" AND ");
   }
 
-  query += " ORDER BY gameDate DESC";
+  query += " ORDER BY gameDate ASC";
 
   try {
     // In middleware, we get the env from Astro.locals.runtime.env
