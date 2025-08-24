@@ -1,16 +1,27 @@
 import { Hono } from 'hono';
-
-type Bindings = {
-  DB: D1Database;
-}
-
 import { SignJWT } from 'jose';
 import bcrypt from 'bcryptjs';
 
 const JWT_SECRET = new TextEncoder().encode('REPLACE_THIS_WITH_A_SECRET_KEY'); // TODO: Use env var for production
 const JWT_EXPIRY = 2 * 60 * 60; // 2 hours in seconds
 
+type Bindings = {
+  DB: D1Database;
+};
+
 export const app = new Hono<{ Bindings: Bindings }>().basePath('/api');
+
+// Extend Hono's ContextVariableMap
+declare module 'hono' {
+  interface ContextVariableMap {
+    user?: {
+      userid: string;
+      email: string;
+      role: string;
+      [key: string]: unknown;
+    };
+  }
+}
 
 app.get('/games', async (c) => {
   const { team, teams, gameDate } = c.req.query();
@@ -52,6 +63,20 @@ app.get('/games', async (c) => {
   }
 });
 
+// Add user type to context
+type User = {
+  userid: string;
+  email: string;
+  role: string;
+  [key: string]: unknown;
+};
+
+declare module 'hono' {
+  interface ContextVariableMap {
+    user?: User;
+  }
+}
+
 // POST /login endpoint
 
 app.get('/logout', async (c) => {
@@ -89,20 +114,78 @@ app.post('/login', async (c) => {
   }
 });
 
+// Create game_updates table if it doesn't exist
+const CREATE_UPDATES_TABLE = `
+  CREATE TABLE IF NOT EXISTS game_updates (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    game_id INTEGER NOT NULL,
+    user_email TEXT NOT NULL,
+    update_text TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (game_id) REFERENCES games2025(id)
+  )
+`;
+
 app.patch('/games/:id', async (c) => {
   const id = c.req.param('id');
-  const { ehsFinal, oppFinal } = await c.req.json();
+  const { ehsFinal, oppFinal, updateText } = await c.req.json();
+  const user = c.get('user');
+  const userEmail = user?.email;
 
   if (!id || ehsFinal === undefined || oppFinal === undefined) {
     return c.json({ error: 'Missing required fields' }, 400);
   }
 
   try {
-    const query = "UPDATE games2025 SET ehsFinal = ?, oppFinal = ? WHERE id = ?";
-    await c.env.DB.prepare(query).bind(ehsFinal, oppFinal, id).run();
-    return c.json({ success: true, message: `Game ${id} updated.` });
+    // Create updates table if it doesn't exist
+    await c.env.DB.prepare(CREATE_UPDATES_TABLE).run();
+    
+    // Start a transaction
+    await c.env.DB.prepare('BEGIN TRANSACTION').run();
+
+    // Update game scores
+    const updateQuery = "UPDATE games2025 SET ehsFinal = ?, oppFinal = ? WHERE id = ?";
+    await c.env.DB.prepare(updateQuery).bind(ehsFinal, oppFinal, id).run();
+
+    // If there's an update text, save it
+    if (updateText && userEmail) {
+      const insertUpdate = `
+        INSERT INTO game_updates (game_id, user_email, update_text)
+        VALUES (?, ?, ?)
+      `;
+      await c.env.DB.prepare(insertUpdate).bind(id, userEmail, updateText).run();
+    }
+
+    // Commit the transaction
+    await c.env.DB.prepare('COMMIT').run();
+
+    return c.json({ 
+      success: true, 
+      message: `Game ${id} updated${updateText ? ' with note' : ''}.` 
+    });
   } catch (e) {
-    console.error('D1 Update Error:', (e as Error).message);
+    await c.env.DB.prepare('ROLLBACK').run();
+    console.error('Update Error:', (e as Error).message);
     return c.json({ error: 'Failed to update game' }, 500);
+  }
+});
+
+// Get updates for a game
+app.get('/games/:id/updates', async (c) => {
+  const id = c.req.param('id');
+  
+  try {
+    const { results } = await c.env.DB.prepare(`
+      SELECT id, game_id, user_email, update_text, 
+             strftime('%Y-%m-%d %H:%M', created_at) as created_at
+      FROM game_updates 
+      WHERE game_id = ? 
+      ORDER BY created_at DESC
+    `).bind(id).all();
+    
+    return c.json(results || []);
+  } catch (e) {
+    console.error('Fetch Updates Error:', (e as Error).message);
+    return c.json({ error: 'Failed to fetch updates' }, 500);
   }
 });
