@@ -10,7 +10,7 @@ const userEmail = Astro.locals.user?.email ?? null;
 ---
 
 <Layout title="Scoreboard Admin - Emerson Mavericks Football">
-	<main class="container">
+	<main class="container" data-page="admin">
 		<h1>Scoreboard Admin</h1>
     <h4 class="welcome-message">Welcome, {userEmail ?? "Guest"}!</h4>
 		<ScoreboardFilter />

@@ -93,29 +93,59 @@
     return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
   }
 
-  const createGameCardHTML = (game: Game): string => `
-    <div class="game-card">
-      <div class="game-header">
-        <span class="game-date">${formatDate(game.gameDate)}</span>
-        <span class="game-level">${toTitleCase(game.teams)}</span>
-      </div>
-      <div class="game-body">
-        <div class="team">
-          <span class="team-name">${game.ehs}</span>
-          <span class="team-score">${game.ehsFinal}</span>
+  // Check if this is the admin page by looking for a data-admin attribute on the scoreboard container
+  const isAdmin = document.body.dataset.page === 'admin';
+
+  const createGameCardHTML = (game: Game): string => {
+    if (isAdmin) {
+      return `
+        <div class="game-card" data-game-id="${game.id}">
+          <div class="game-header">
+            <span class="game-date">${formatDate(game.gameDate)}</span>
+            <span class="game-level">${toTitleCase(game.teams)}</span>
+          </div>
+          <div class="game-body">
+            <div class="team">
+              <span class="team-name">${game.ehs}</span>
+              <input type="number" class="team-score-input" value="${game.ehsFinal}" />
+            </div>
+            <div class="team">
+              <span class="team-name">${game.opp}</span>
+              <input type="number" class="team-score-input" value="${game.oppFinal}" />
+            </div>
+          </div>
+          <div class="game-footer">
+            <button class="update-button">Update Score</button>
+          </div>
         </div>
-        <div class="team">
-          <span class="team-name">${game.opp}</span>
-          <span class="team-score">${game.oppFinal}</span>
+      `;
+    } else {
+      return `
+        <div class="game-card">
+          <div class="game-header">
+            <span class="game-date">${formatDate(game.gameDate)}</span>
+            <span class="game-level">${toTitleCase(game.teams)}</span>
+          </div>
+          <div class="game-body">
+            <div class="team">
+              <span class="team-name">${game.ehs}</span>
+              <span class="team-score">${game.ehsFinal}</span>
+            </div>
+            <div class="team">
+              <span class="team-name">${game.opp}</span>
+              <span class="team-score">${game.oppFinal}</span>
+            </div>
+          </div>
+          ${game.comments ? `
+          <div class="game-footer">
+            <p class="game-comment">${game.comments}</p>
+          </div>
+          ` : ''}
         </div>
-      </div>
-      ${game.comments ? `
-      <div class="game-footer">
-        <p class="game-comment">${game.comments}</p>
-      </div>
-      ` : ''}
-    </div>
-  `;
+      `;
+    }
+  };
+
 
   document.addEventListener('DOMContentLoaded', () => {
     const form = document.getElementById('filter-form') as HTMLFormElement;
