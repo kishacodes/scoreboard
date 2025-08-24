@@ -3985,7 +3985,18 @@ app.post("/login", async (c) => {
       return c.json({ error: "Invalid email or password." }, 401);
     }
     const token = await new SignJWT({ userid: user.userid, email: user.email, role: user.role }).setProtectedHeader({ alg: "HS256" }).setExpirationTime(`${JWT_EXPIRY}s`).sign(JWT_SECRET);
-    c.header("Set-Cookie", `auth=${token}; HttpOnly; Secure; Path=/; SameSite=Strict; Max-Age=${JWT_EXPIRY}`);
+    const cookieOptions = [
+      `auth=${token}`,
+      "Path=/",
+      "HttpOnly",
+      "Secure",
+      "SameSite=Lax",
+      // Changed from Strict to Lax for cross-site requests
+      `Max-Age=${JWT_EXPIRY}`,
+      "Domain=.scoreboard2025.pages.dev"
+      // Allow subdomains to access the cookie
+    ].join("; ");
+    c.header("Set-Cookie", cookieOptions);
     return c.json({ success: true });
   } catch (e) {
     console.error("Login error:", e.message);
@@ -4003,31 +4014,51 @@ const CREATE_UPDATES_TABLE = `
   )
 `;
 app.use("*", async (c, next) => {
-  c.header("Access-Control-Allow-Origin", c.req.header("origin") || "*");
+  const origin = c.req.header("origin");
+  c.header("Access-Control-Allow-Origin", origin || "*");
   c.header("Access-Control-Allow-Credentials", "true");
   c.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS");
-  c.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  c.header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With");
+  c.header("Access-Control-Expose-Headers", "Content-Type, Authorization");
   if (c.req.method === "OPTIONS") {
-    return new Response(null, { status: 204 });
+    return new Response(null, {
+      status: 204,
+      headers: {
+        "Access-Control-Allow-Origin": origin || "*",
+        "Access-Control-Allow-Credentials": "true",
+        "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With"
+      }
+    });
   }
   await next();
 });
+const publicRoutes = [
+  "/api/login",
+  "/api/games",
+  "/login",
+  "/logout",
+  "/api/health"
+];
 app.use("*", async (c, next) => {
-  const publicRoutes = ["/api/login", "/api/games"];
-  if (publicRoutes.some((route) => c.req.path.startsWith(route))) {
+  const path = c.req.path;
+  if (publicRoutes.some((route) => path.startsWith(route))) {
     return next();
   }
-  const authHeader = c.req.header("Authorization");
   let token = "";
+  const authHeader = c.req.header("Authorization");
   if (authHeader && authHeader.startsWith("Bearer ")) {
     token = authHeader.split(" ")[1];
-  } else {
+  } else if (c.req.raw.headers.has("cookie")) {
     const cookies = c.req.raw.headers.get("cookie") || "";
     const match = cookies.match(/auth=([^;]+)/);
     token = match ? match[1] : "";
   }
   if (!token) {
-    return c.json({ error: "Unauthorized" }, 401);
+    if (path.startsWith("/api/")) {
+      return c.json({ error: "Unauthorized" }, 401);
+    }
+    return c.redirect("/login");
   }
   try {
     const { payload } = await jwtVerify(token, JWT_SECRET);
@@ -4039,7 +4070,11 @@ app.use("*", async (c, next) => {
     };
     c.set("user", user);
   } catch (e) {
-    return c.json({ error: "Invalid token" }, 401);
+    console.error("Token verification failed:", e);
+    if (path.startsWith("/api/")) {
+      return c.json({ error: "Invalid or expired token" }, 401);
+    }
+    return c.redirect("/login");
   }
   await next();
 });

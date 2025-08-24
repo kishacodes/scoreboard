@@ -72,20 +72,39 @@ import Layout from '../layouts/Layout.astro';
     errorEl.textContent = '';
     const email = (document.getElementById('email') as HTMLInputElement).value;
     const password = (document.getElementById('password') as HTMLInputElement).value;
-    const res = await fetch('/api/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password })
-    });
-    if (res.ok) {
-      window.location.href = '/admin';
-    } else {
-      const data = await res.json();
-      if (data && typeof data === 'object' && 'error' in data && typeof data.error === 'string') {
-        errorEl.textContent = data.error;
+      try {
+        const res = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',  // Important for cookies
+          body: JSON.stringify({ email, password })
+        });
+        
+        if (res.ok) {
+        // Get the auth token from the response cookies
+        const cookies = document.cookie.split(';');
+        const authCookie = cookies.find(c => c.trim().startsWith('auth='));
+        const token = authCookie ? authCookie.split('=')[1] : null;
+        
+        // Store token in localStorage as fallback
+        if (token) {
+          localStorage.setItem('authToken', token);
+        }
+        
+        // Check for returnTo URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const returnTo = urlParams.get('returnTo') || '/admin';
+        window.location.href = returnTo;
       } else {
-        errorEl.textContent = 'Invalid login.';
+        const data = await res.json().catch(() => ({}));
+        const errorMessage = typeof data === 'object' && data !== null && 'error' in data && typeof data.error === 'string'
+          ? data.error
+          : 'Invalid login.';
+        errorEl.textContent = errorMessage;  
       }
+    } catch (error) {
+      console.error('Login error:', error);
+      errorEl.textContent = 'An error occurred during login. Please try again.';
     }
   });
 </script>

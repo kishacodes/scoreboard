@@ -223,21 +223,36 @@ const toTitleCase = (str: string) => {
     target.textContent = 'Updating...';
     target.setAttribute('disabled', 'true');
 
-    try {
-      // Get the auth token from cookies
-      const getCookie = (name: string) => {
-        const value = `; ${document.cookie}`;
-        const parts = value.split(`; ${name}=`);
-        if (parts.length === 2) return parts.pop()?.split(';').shift();
-      };
-      const token = getCookie('auth');
-      
-      if (!token) {
-        throw new Error('Not authenticated');
-      }
+    // Function to handle authentication errors
+    const handleAuthError = (message: string) => {
+      console.error('Authentication error:', message);
+      // Clear any invalid tokens
+      document.cookie = 'auth=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+      localStorage.removeItem('authToken');
+      // Redirect to login with a return URL
+      window.location.href = `/login?returnTo=${encodeURIComponent(window.location.pathname)}`;
+    };
 
+    // Get the auth token from cookies or localStorage
+    const getAuthToken = (): string | null => {
+      // Try cookies first
+      const cookieMatch = document.cookie.match(/auth=([^;]+)/);
+      if (cookieMatch) return cookieMatch[1];
+      
+      // Fallback to localStorage
+      return localStorage.getItem('authToken');
+    };
+
+    const token = getAuthToken();
+    if (!token) {
+      handleAuthError('No authentication token found');
+      return;
+    }
+
+    try {
       const response = await fetch(`/api/games/${gameId}`, {
         method: 'PATCH',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
@@ -246,12 +261,16 @@ const toTitleCase = (str: string) => {
           ehsFinal: parseInt(ehsFinal, 10),
           oppFinal: parseInt(oppFinal, 10),
           updateText: updateText
-        }),
+        })
       });
 
       const result = await response.json() as ApiResponse<{ updates: GameUpdate[] }>;
       
       if (!response.ok) {
+        if (response.status === 401) {
+          handleAuthError('Session expired');
+          return;
+        }
         throw new Error(result.error || 'Failed to update score');
       }
 
@@ -282,6 +301,11 @@ const toTitleCase = (str: string) => {
 
     } catch (error) {
       console.error('Update Error:', error);
+      if (error instanceof Error && error.message.includes('token')) {
+        handleAuthError('Invalid session');
+        return;
+      }
+      
       target.textContent = 'Error!';
       target.style.backgroundColor = '#d9534f';
       setTimeout(() => {
