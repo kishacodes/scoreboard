@@ -142,6 +142,18 @@ const toTitleCase = (str: string) => {
     created_at: string;
   }
 
+  // Define the Game type for TypeScript
+  interface GameData {
+    id: number;
+    gameDate: string;
+    teams: string;
+    ehs: string;
+    ehsFinal: string | number;
+    opp: string;
+    oppFinal: string | number;
+    comments?: string;
+  }
+
   // Function to load update history for a game
   async function loadUpdateHistory(gameId: string) {
     try {
@@ -214,8 +226,23 @@ const toTitleCase = (str: string) => {
         updateInput.value = '';
       }
 
-      // Reload the update history
-      await loadUpdateHistory(gameId);
+      // Reload the update history and game data
+      await Promise.all([
+        loadUpdateHistory(gameId),
+        // Refresh the game data
+        fetch(`/api/games/${gameId}`)
+          .then(res => res.ok ? res.json() : null)
+          .then((gameData: GameData | null) => {
+            if (gameData) {
+              // Update the score inputs with the latest data
+              const scoreInputs = card.querySelectorAll('.team-score-input') as NodeListOf<HTMLInputElement>;
+              if (scoreInputs[0] && scoreInputs[1]) {
+                scoreInputs[0].value = String(gameData.ehsFinal);
+                scoreInputs[1].value = String(gameData.oppFinal);
+              }
+            }
+          })
+      ]);
 
       target.textContent = 'Updated!';
       setTimeout(() => {

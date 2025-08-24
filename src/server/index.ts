@@ -140,33 +140,29 @@ app.patch('/games/:id', async (c) => {
     // Create updates table if it doesn't exist
     await c.env.DB.prepare(CREATE_UPDATES_TABLE).run();
     
-    // Start a transaction
-    await c.env.DB.prepare('BEGIN TRANSACTION').run();
-
-    // Update game scores
-    const updateQuery = "UPDATE games2025 SET ehsFinal = ?, oppFinal = ? WHERE id = ?";
-    await c.env.DB.prepare(updateQuery).bind(ehsFinal, oppFinal, id).run();
-
-    // If there's an update text, save it
-    if (updateText && userEmail) {
-      const insertUpdate = `
-        INSERT INTO game_updates (game_id, user_email, update_text)
-        VALUES (?, ?, ?)
-      `;
-      await c.env.DB.prepare(insertUpdate).bind(id, userEmail, updateText).run();
-    }
-
-    // Commit the transaction
-    await c.env.DB.prepare('COMMIT').run();
+    // Use D1's transaction API
+    await c.env.DB.batch([
+      // Update game scores
+      c.env.DB.prepare("UPDATE games2025 SET ehsFinal = ?, oppFinal = ? WHERE id = ?")
+        .bind(ehsFinal, oppFinal, id),
+      
+      // If there's an update text, save it
+      ...(updateText && userEmail ? [
+        c.env.DB.prepare("INSERT INTO game_updates (game_id, user_email, update_text) VALUES (?, ?, ?)")
+          .bind(id, userEmail, updateText)
+      ] : [])
+    ]);
 
     return c.json({ 
       success: true, 
       message: `Game ${id} updated${updateText ? ' with note' : ''}.` 
     });
   } catch (e) {
-    await c.env.DB.prepare('ROLLBACK').run();
     console.error('Update Error:', (e as Error).message);
-    return c.json({ error: 'Failed to update game' }, 500);
+    return c.json({ 
+      error: 'Failed to update game',
+      details: (e as Error).message
+    }, 500);
   }
 });
 
