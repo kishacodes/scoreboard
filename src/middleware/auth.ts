@@ -11,7 +11,12 @@ export const onRequest = defineMiddleware(async (context, next) => {
   }
   try {
     const { payload } = await jwtVerify(token, JWT_SECRET);
-    locals.user = payload;
+    locals.user = payload as {
+      userid: string;
+      email: string;
+      role: string;
+      [key: string]: unknown;
+    };
     return next();
   } catch (e) {
     return redirect('/login');
