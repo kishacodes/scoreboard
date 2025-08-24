@@ -81,20 +81,25 @@ import Layout from '../layouts/Layout.astro';
         });
         
         if (res.ok) {
-        // Get the auth token from the response cookies
-        const cookies = document.cookie.split(';');
-        const authCookie = cookies.find(c => c.trim().startsWith('auth='));
-        const token = authCookie ? authCookie.split('=')[1] : null;
-        
-        // Store token in localStorage as fallback
-        if (token) {
-          localStorage.setItem('authToken', token);
-        }
-        
-        // Check for returnTo URL
-        const urlParams = new URLSearchParams(window.location.search);
-        const returnTo = urlParams.get('returnTo') || '/admin';
-        window.location.href = returnTo;
+          // The server should set the cookie with HttpOnly flag
+          // We'll also store a copy in localStorage as fallback
+          const data = await res.json().catch(() => ({})) as { success: boolean; token?: string };
+          
+          if (data?.token) {
+            localStorage.setItem('authToken', data.token);
+          }
+          
+          // Get return URL from query params or default to /admin
+          const urlParams = new URLSearchParams(window.location.search);
+          let returnTo = urlParams.get('returnTo');
+          
+          // Ensure the return URL is safe and relative
+          if (!returnTo || !returnTo.startsWith('/')) {
+            returnTo = '/admin';
+          }
+          
+          // Force a full page reload to ensure all auth state is properly set
+          window.location.href = returnTo;
       } else {
         const data = await res.json().catch(() => ({}));
         const errorMessage = typeof data === 'object' && data !== null && 'error' in data && typeof data.error === 'string'

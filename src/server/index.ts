@@ -120,7 +120,10 @@ app.post('/login', async (c) => {
     ].join('; ');
     
     c.header('Set-Cookie', cookieOptions);
-    return c.json({ success: true });
+    return c.json({ 
+      success: true,
+      token // Include the token in the response for client-side storage
+    });
   } catch (e) {
     console.error('Login error:', (e as Error).message);
     return c.json({ error: 'Login failed.' }, 500);
