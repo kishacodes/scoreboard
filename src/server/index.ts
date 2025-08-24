@@ -53,6 +53,12 @@ app.get('/games', async (c) => {
 });
 
 // POST /login endpoint
+
+app.get('/logout', async (c) => {
+  c.header('Set-Cookie', 'auth=; HttpOnly; Secure; Path=/; SameSite=Strict; Max-Age=0');
+  return c.redirect('/');
+});
+
 app.post('/login', async (c) => {
   const { email, password } = await c.req.json();
   if (!email || !password) {
