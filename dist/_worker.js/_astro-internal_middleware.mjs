@@ -3964,6 +3964,10 @@ app.get("/games", async (c) => {
     return c.json({ error: "Failed to fetch games" }, 500);
   }
 });
+app.get("/logout", async (c) => {
+  c.header("Set-Cookie", "auth=; HttpOnly; Secure; Path=/; SameSite=Strict; Max-Age=0");
+  return c.redirect("/");
+});
 app.post("/login", async (c) => {
   const { email, password } = await c.req.json();
   if (!email || !password) {
@@ -3988,19 +3992,61 @@ app.post("/login", async (c) => {
     return c.json({ error: "Login failed." }, 500);
   }
 });
+const CREATE_UPDATES_TABLE = `
+  CREATE TABLE IF NOT EXISTS game_updates (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    game_id INTEGER NOT NULL,
+    user_email TEXT NOT NULL,
+    update_text TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (game_id) REFERENCES games2025(id)
+  )
+`;
 app.patch("/games/:id", async (c) => {
   const id = c.req.param("id");
-  const { ehsFinal, oppFinal } = await c.req.json();
+  const { ehsFinal, oppFinal, updateText } = await c.req.json();
+  const user = c.get("user");
+  const userEmail = user?.email;
   if (!id || ehsFinal === void 0 || oppFinal === void 0) {
     return c.json({ error: "Missing required fields" }, 400);
   }
   try {
-    const query = "UPDATE games2025 SET ehsFinal = ?, oppFinal = ? WHERE id = ?";
-    await c.env.DB.prepare(query).bind(ehsFinal, oppFinal, id).run();
-    return c.json({ success: true, message: `Game ${id} updated.` });
+    await c.env.DB.prepare(CREATE_UPDATES_TABLE).run();
+    await c.env.DB.prepare("BEGIN TRANSACTION").run();
+    const updateQuery = "UPDATE games2025 SET ehsFinal = ?, oppFinal = ? WHERE id = ?";
+    await c.env.DB.prepare(updateQuery).bind(ehsFinal, oppFinal, id).run();
+    if (updateText && userEmail) {
+      const insertUpdate = `
+        INSERT INTO game_updates (game_id, user_email, update_text)
+        VALUES (?, ?, ?)
+      `;
+      await c.env.DB.prepare(insertUpdate).bind(id, userEmail, updateText).run();
+    }
+    await c.env.DB.prepare("COMMIT").run();
+    return c.json({
+      success: true,
+      message: `Game ${id} updated${updateText ? " with note" : ""}.`
+    });
   } catch (e) {
-    console.error("D1 Update Error:", e.message);
+    await c.env.DB.prepare("ROLLBACK").run();
+    console.error("Update Error:", e.message);
     return c.json({ error: "Failed to update game" }, 500);
+  }
+});
+app.get("/games/:id/updates", async (c) => {
+  const id = c.req.param("id");
+  try {
+    const { results } = await c.env.DB.prepare(`
+      SELECT id, game_id, user_email, update_text, 
+             strftime('%Y-%m-%d %H:%M', created_at) as created_at
+      FROM game_updates 
+      WHERE game_id = ? 
+      ORDER BY created_at DESC
+    `).bind(id).all();
+    return c.json(results || []);
+  } catch (e) {
+    console.error("Fetch Updates Error:", e.message);
+    return c.json({ error: "Failed to fetch updates" }, 500);
   }
 });
 
