@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
-import { SignJWT } from 'jose';
+import { SignJWT, jwtVerify } from 'jose';
+import { getCookie } from 'hono/cookie';
 import bcrypt from 'bcryptjs';
 
 const JWT_SECRET = new TextEncoder().encode('REPLACE_THIS_WITH_A_SECRET_KEY'); // TODO: Use env var for production
@@ -126,7 +127,64 @@ const CREATE_UPDATES_TABLE = `
   )
 `;
 
-// Ensure the updates table exists when the server starts
+// CORS middleware
+app.use('*', async (c, next) => {
+  // Set CORS headers
+  c.header('Access-Control-Allow-Origin', c.req.header('origin') || '*');
+  c.header('Access-Control-Allow-Credentials', 'true');
+  c.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+  c.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  
+  // Handle preflight requests
+  if (c.req.method === 'OPTIONS') {
+    return new Response(null, { status: 204 });
+  }
+  
+  await next();
+});
+
+// Auth middleware
+app.use('*', async (c, next) => {
+  // Skip auth for login and public routes
+  const publicRoutes = ['/api/login', '/api/games'];
+  if (publicRoutes.some(route => c.req.path.startsWith(route))) {
+    return next();
+  }
+  
+  // Check for token in Authorization header or cookie
+  const authHeader = c.req.header('Authorization');
+  let token = '';
+  
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    token = authHeader.split(' ')[1];
+  } else {
+    const cookies = c.req.raw.headers.get('cookie') || '';
+    const match = cookies.match(/auth=([^;]+)/);
+    token = match ? match[1] : '';
+  }
+  
+  if (!token) {
+    return c.json({ error: 'Unauthorized' }, 401);
+  }
+  
+  try {
+    const { payload } = await jwtVerify(token, JWT_SECRET);
+    // Ensure the payload has the expected shape
+    const user = {
+      userid: payload.userid as string,
+      email: payload.email as string,
+      role: payload.role as string,
+      ...payload
+    };
+    c.set('user', user);
+  } catch (e) {
+    return c.json({ error: 'Invalid token' }, 401);
+  }
+  
+  await next();
+});
+
+// Ensure the updates table exists
 app.use('*', async (c, next) => {
   try {
     await c.env.DB.prepare(CREATE_UPDATES_TABLE).run();

@@ -224,10 +224,23 @@ const toTitleCase = (str: string) => {
     target.setAttribute('disabled', 'true');
 
     try {
+      // Get the auth token from cookies
+      const getCookie = (name: string) => {
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; ${name}=`);
+        if (parts.length === 2) return parts.pop()?.split(';').shift();
+      };
+      const token = getCookie('auth');
+      
+      if (!token) {
+        throw new Error('Not authenticated');
+      }
+
       const response = await fetch(`/api/games/${gameId}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({ 
           ehsFinal: parseInt(ehsFinal, 10),

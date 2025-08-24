@@ -4003,6 +4003,47 @@ const CREATE_UPDATES_TABLE = `
   )
 `;
 app.use("*", async (c, next) => {
+  c.header("Access-Control-Allow-Origin", c.req.header("origin") || "*");
+  c.header("Access-Control-Allow-Credentials", "true");
+  c.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS");
+  c.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  if (c.req.method === "OPTIONS") {
+    return new Response(null, { status: 204 });
+  }
+  await next();
+});
+app.use("*", async (c, next) => {
+  const publicRoutes = ["/api/login", "/api/games"];
+  if (publicRoutes.some((route) => c.req.path.startsWith(route))) {
+    return next();
+  }
+  const authHeader = c.req.header("Authorization");
+  let token = "";
+  if (authHeader && authHeader.startsWith("Bearer ")) {
+    token = authHeader.split(" ")[1];
+  } else {
+    const cookies = c.req.raw.headers.get("cookie") || "";
+    const match = cookies.match(/auth=([^;]+)/);
+    token = match ? match[1] : "";
+  }
+  if (!token) {
+    return c.json({ error: "Unauthorized" }, 401);
+  }
+  try {
+    const { payload } = await jwtVerify(token, JWT_SECRET);
+    const user = {
+      userid: payload.userid,
+      email: payload.email,
+      role: payload.role,
+      ...payload
+    };
+    c.set("user", user);
+  } catch (e) {
+    return c.json({ error: "Invalid token" }, 401);
+  }
+  await next();
+});
+app.use("*", async (c, next) => {
   try {
     await c.env.DB.prepare(CREATE_UPDATES_TABLE).run();
   } catch (e) {
