@@ -4002,33 +4002,54 @@ const CREATE_UPDATES_TABLE = `
     FOREIGN KEY (game_id) REFERENCES games2025(id)
   )
 `;
+app.use("*", async (c, next) => {
+  try {
+    await c.env.DB.prepare(CREATE_UPDATES_TABLE).run();
+  } catch (e) {
+    console.error("Error creating updates table:", e);
+  }
+  await next();
+});
 app.patch("/games/:id", async (c) => {
   const id = c.req.param("id");
   const { ehsFinal, oppFinal, updateText } = await c.req.json();
   const user = c.get("user");
-  const userEmail = user?.email;
+  if (!user) {
+    return c.json({ error: "Unauthorized" }, 401);
+  }
+  const userEmail = user.email;
   if (!id || ehsFinal === void 0 || oppFinal === void 0) {
     return c.json({ error: "Missing required fields" }, 400);
   }
   try {
-    await c.env.DB.prepare(CREATE_UPDATES_TABLE).run();
-    await c.env.DB.batch([
+    const statements = [
       // Update game scores
-      c.env.DB.prepare("UPDATE games2025 SET ehsFinal = ?, oppFinal = ? WHERE id = ?").bind(ehsFinal, oppFinal, id),
-      // If there's an update text, save it
-      ...updateText && userEmail ? [
-        c.env.DB.prepare("INSERT INTO game_updates (game_id, user_email, update_text) VALUES (?, ?, ?)").bind(id, userEmail, updateText)
-      ] : []
-    ]);
+      c.env.DB.prepare("UPDATE games2025 SET ehsFinal = ?, oppFinal = ? WHERE id = ?").bind(ehsFinal, oppFinal, id)
+    ];
+    if (updateText && userEmail) {
+      statements.push(
+        c.env.DB.prepare(
+          `INSERT INTO game_updates (game_id, user_email, update_text) 
+           VALUES (?, ?, ?)`
+        ).bind(id, userEmail, updateText)
+      );
+    }
+    await c.env.DB.batch(statements);
+    const updates = await c.env.DB.prepare(
+      `SELECT * FROM game_updates 
+       WHERE game_id = ? 
+       ORDER BY created_at DESC`
+    ).bind(id).all();
     return c.json({
       success: true,
-      message: `Game ${id} updated${updateText ? " with note" : ""}.`
+      message: `Game ${id} updated${updateText ? " with note" : ""}.`,
+      updates: updates.results || []
     });
   } catch (e) {
-    console.error("Update Error:", e.message);
+    console.error("Update Error:", e);
     return c.json({
       error: "Failed to update game",
-      details: e.message
+      details: e instanceof Error ? e.message : "Unknown error"
     }, 500);
   }
 });

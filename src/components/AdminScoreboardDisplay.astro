@@ -133,7 +133,7 @@ const toTitleCase = (str: string) => {
 </style>
 
 <script>
-  // Define the Update type for TypeScript
+  // Define types for API responses
   interface GameUpdate {
     id: number;
     game_id: number;
@@ -142,7 +142,6 @@ const toTitleCase = (str: string) => {
     created_at: string;
   }
 
-  // Define the Game type for TypeScript
   interface GameData {
     id: number;
     gameDate: string;
@@ -154,32 +153,52 @@ const toTitleCase = (str: string) => {
     comments?: string;
   }
 
+  interface ApiResponse<T = any> {
+    success: boolean;
+    message?: string;
+    error?: string;
+    results?: T;
+    updates?: GameUpdate[];
+  }
+
+  // Function to render updates in the UI
+  function renderUpdates(card: HTMLElement, updates: any[]) {
+    const gameId = card.dataset.gameId;
+    if (!gameId) return;
+    
+    const historyContainer = card.querySelector('.update-history') as HTMLElement;
+    if (!historyContainer) return;
+    
+    if (!updates || updates.length === 0) {
+      historyContainer.style.display = 'none';
+      return;
+    }
+    
+    historyContainer.style.display = 'block';
+    historyContainer.innerHTML = updates.map(update => `
+      <div class="update-item">
+        <div class="update-meta">
+          <span class="update-user">${(update.user_email || '').split('@')[0]}</span>
+          <span class="update-time">${new Date(update.created_at).toLocaleString()}</span>
+        </div>
+        <div class="update-text">${update.update_text}</div>
+      </div>
+    `).join('');
+  }
+
   // Function to load update history for a game
   async function loadUpdateHistory(gameId: string) {
     try {
       const response = await fetch(`/api/games/${gameId}/updates`);
       if (!response.ok) throw new Error('Failed to load updates');
       
-      const updates = await response.json() as GameUpdate[];
-      const historyContainer = document.getElementById(`update-history-${gameId}`);
+      const result = await response.json() as ApiResponse<GameUpdate[]>;
+      const updates = result.results || [];
+      const card = document.querySelector(`.game-card[data-game-id="${gameId}"]`) as HTMLElement;
       
-      if (!historyContainer) return;
-      
-      if (updates.length === 0) {
-        historyContainer.style.display = 'none';
-        return;
+      if (card) {
+        renderUpdates(card, updates);
       }
-      
-      historyContainer.style.display = 'block';
-      historyContainer.innerHTML = updates.map(update => `
-        <div class="update-item">
-          <div class="update-meta">
-            <span class="update-user">${update.user_email.split('@')[0]}</span>
-            <span class="update-time">${new Date(update.created_at).toLocaleString()}</span>
-          </div>
-          <div class="update-text">${update.update_text}</div>
-        </div>
-      `).join('');
       
     } catch (error) {
       console.error('Error loading update history:', error);
@@ -217,8 +236,10 @@ const toTitleCase = (str: string) => {
         }),
       });
 
+      const result = await response.json() as ApiResponse<{ updates: GameUpdate[] }>;
+      
       if (!response.ok) {
-        throw new Error('Failed to update score');
+        throw new Error(result.error || 'Failed to update score');
       }
 
       // Clear the update input
@@ -226,23 +247,19 @@ const toTitleCase = (str: string) => {
         updateInput.value = '';
       }
 
-      // Reload the update history and game data
-      await Promise.all([
-        loadUpdateHistory(gameId),
-        // Refresh the game data
-        fetch(`/api/games/${gameId}`)
-          .then(res => res.ok ? res.json() : null)
-          .then((gameData: GameData | null) => {
-            if (gameData) {
-              // Update the score inputs with the latest data
-              const scoreInputs = card.querySelectorAll('.team-score-input') as NodeListOf<HTMLInputElement>;
-              if (scoreInputs[0] && scoreInputs[1]) {
-                scoreInputs[0].value = String(gameData.ehsFinal);
-                scoreInputs[1].value = String(gameData.oppFinal);
-              }
-            }
-          })
-      ]);
+      // Update the UI with the latest data
+      const scoreInputs = card.querySelectorAll('.team-score-input') as NodeListOf<HTMLInputElement>;
+      if (scoreInputs[0] && scoreInputs[1]) {
+        scoreInputs[0].value = String(ehsFinal);
+        scoreInputs[1].value = String(oppFinal);
+      }
+
+      // Reload the update history
+      if (result.updates && result.updates.length > 0) {
+        renderUpdates(card, result.updates);
+      } else {
+        await loadUpdateHistory(gameId);
+      }
 
       target.textContent = 'Updated!';
       setTimeout(() => {
@@ -264,6 +281,9 @@ const toTitleCase = (str: string) => {
 
   // Load update history for all games on page load
   document.addEventListener('DOMContentLoaded', () => {
+    // Check if we're on the admin page
+    if (document.body.dataset.page !== 'admin') return;
+    
     document.querySelectorAll('.game-card').forEach(card => {
       const gameId = (card as HTMLElement).dataset.gameId;
       if (gameId) {
