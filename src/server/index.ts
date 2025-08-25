@@ -10,7 +10,7 @@ type Bindings = {
   DB: D1Database;
 };
 
-export const app = new Hono<{ Bindings: Bindings }>().basePath('/api');
+export const app = new Hono<{ Bindings: Bindings }>();
 
 // Extend Hono's ContextVariableMap
 declare module 'hono' {
@@ -24,7 +24,7 @@ declare module 'hono' {
   }
 }
 
-app.get('/games', async (c) => {
+app.get('/api/games', async (c) => {
   const { team, teams, gameDate } = c.req.query();
 
   let query = "SELECT * FROM games2025";
@@ -80,12 +80,12 @@ declare module 'hono' {
 
 // POST /login endpoint
 
-app.get('/logout', async (c) => {
+app.get('/api/logout', async (c) => {
   c.header('Set-Cookie', 'auth=; HttpOnly; Secure; Path=/; SameSite=Strict; Max-Age=0');
   return c.redirect('/');
 });
 
-app.post('/login', async (c) => {
+app.post('/api/login', async (c) => {
   const { email, password } = await c.req.json();
   if (!email || !password) {
     return c.json({ error: 'Email and password required.' }, 400);
@@ -115,8 +115,8 @@ app.post('/login', async (c) => {
       'HttpOnly',
       'Secure',
       'SameSite=Lax',  // Changed from Strict to Lax for cross-site requests
-      `Max-Age=${JWT_EXPIRY}`,
-      'Domain=.scoreboard2025.pages.dev'  // Allow subdomains to access the cookie
+      `Max-Age=${JWT_EXPIRY}`
+      // Removed Domain restriction to work with all deployment URLs
     ].join('; ');
     
     c.header('Set-Cookie', cookieOptions);
@@ -220,6 +220,8 @@ app.use('*', async (c, next) => {
   
   try {
     const { payload } = await jwtVerify(token, JWT_SECRET);
+    console.log('🔍 Server - JWT payload:', payload);
+    
     // Ensure the payload has the expected shape
     const user = {
       userid: payload.userid as string,
@@ -231,8 +233,14 @@ app.use('*', async (c, next) => {
     console.log('✅ Server - Token verified successfully for user:', user.email);
   } catch (e) {
     console.error('❌ Server - Token verification failed:', e);
+    console.error('❌ Server - Failed token was:', token.substring(0, 50) + '...');
+    console.error('❌ Server - JWT_SECRET length:', JWT_SECRET.byteLength);
+    
     if (path.startsWith('/api/')) {
-      return c.json({ error: 'Invalid or expired token' }, 401);
+      return c.json({ 
+        error: 'Invalid or expired token',
+        details: e instanceof Error ? e.message : 'Unknown error'
+      }, 401);
     }
     return c.redirect('/login');
   }
@@ -250,7 +258,7 @@ app.use('*', async (c, next) => {
   await next();
 });
 
-app.patch('/games/:id', async (c) => {
+app.patch('/api/games/:id', async (c) => {
   const id = c.req.param('id');
   const { ehsScore, oppScore, updateText } = await c.req.json();
   const user = c.get('user');
@@ -286,7 +294,7 @@ app.patch('/games/:id', async (c) => {
     await c.env.DB.batch(statements);
 
     // Fetch the latest updates to return
-    const updates = await c.env.DB.prepare(
+    const updatesResult = await c.env.DB.prepare(
       `SELECT * FROM game_updates 
        WHERE game_id = ? 
        ORDER BY created_at DESC`
@@ -295,7 +303,7 @@ app.patch('/games/:id', async (c) => {
     return c.json({ 
       success: true, 
       message: `Game ${id} updated${updateText ? ' with note' : ''}.`,
-      updates: updates.results || []
+      updates: updatesResult.results || []
     });
   } catch (e) {
     console.error('Update Error:', e);
@@ -307,7 +315,7 @@ app.patch('/games/:id', async (c) => {
 });
 
 // Get updates for a game
-app.get('/games/:id/updates', async (c) => {
+app.get('/api/games/:id/updates', async (c) => {
   const id = c.req.param('id');
   
   try {
@@ -325,3 +333,16 @@ app.get('/games/:id/updates', async (c) => {
     return c.json({ error: 'Failed to fetch updates' }, 500);
   }
 });
+
+// Debug route to catch unmatched API requests
+app.all('/api/*', async (c) => {
+  console.log('🔍 Unmatched API route:', c.req.method, c.req.path);
+  return c.json({ 
+    error: 'Route not found',
+    method: c.req.method,
+    path: c.req.path,
+    availableRoutes: ['/api/login', '/api/games/:id', '/api/games/:id/updates']
+  }, 404);
+});
+
+export default app;

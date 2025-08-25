@@ -3930,8 +3930,8 @@ const bcrypt = {
 
 const JWT_SECRET = new TextEncoder().encode("REPLACE_THIS_WITH_A_SECRET_KEY");
 const JWT_EXPIRY = 2 * 60 * 60;
-const app = new Hono().basePath("/api");
-app.get("/games", async (c) => {
+const app = new Hono();
+app.get("/api/games", async (c) => {
   const { team, teams, gameDate } = c.req.query();
   let query = "SELECT * FROM games2025";
   const conditions = [];
@@ -3964,11 +3964,11 @@ app.get("/games", async (c) => {
     return c.json({ error: "Failed to fetch games" }, 500);
   }
 });
-app.get("/logout", async (c) => {
+app.get("/api/logout", async (c) => {
   c.header("Set-Cookie", "auth=; HttpOnly; Secure; Path=/; SameSite=Strict; Max-Age=0");
   return c.redirect("/");
 });
-app.post("/login", async (c) => {
+app.post("/api/login", async (c) => {
   const { email, password } = await c.req.json();
   if (!email || !password) {
     return c.json({ error: "Email and password required." }, 400);
@@ -3992,9 +3992,8 @@ app.post("/login", async (c) => {
       "Secure",
       "SameSite=Lax",
       // Changed from Strict to Lax for cross-site requests
-      `Max-Age=${JWT_EXPIRY}`,
-      "Domain=.scoreboard2025.pages.dev"
-      // Allow subdomains to access the cookie
+      `Max-Age=${JWT_EXPIRY}`
+      // Removed Domain restriction to work with all deployment URLs
     ].join("; ");
     c.header("Set-Cookie", cookieOptions);
     return c.json({
@@ -4073,6 +4072,7 @@ app.use("*", async (c, next) => {
   }
   try {
     const { payload } = await jwtVerify(token, JWT_SECRET);
+    console.log("🔍 Server - JWT payload:", payload);
     const user = {
       userid: payload.userid,
       email: payload.email,
@@ -4083,8 +4083,13 @@ app.use("*", async (c, next) => {
     console.log("✅ Server - Token verified successfully for user:", user.email);
   } catch (e) {
     console.error("❌ Server - Token verification failed:", e);
+    console.error("❌ Server - Failed token was:", token.substring(0, 50) + "...");
+    console.error("❌ Server - JWT_SECRET length:", JWT_SECRET.byteLength);
     if (path.startsWith("/api/")) {
-      return c.json({ error: "Invalid or expired token" }, 401);
+      return c.json({
+        error: "Invalid or expired token",
+        details: e instanceof Error ? e.message : "Unknown error"
+      }, 401);
     }
     return c.redirect("/login");
   }
@@ -4098,7 +4103,7 @@ app.use("*", async (c, next) => {
   }
   await next();
 });
-app.patch("/games/:id", async (c) => {
+app.patch("/api/games/:id", async (c) => {
   const id = c.req.param("id");
   const { ehsScore, oppScore, updateText } = await c.req.json();
   const user = c.get("user");
@@ -4123,7 +4128,7 @@ app.patch("/games/:id", async (c) => {
       );
     }
     await c.env.DB.batch(statements);
-    const updates = await c.env.DB.prepare(
+    const updatesResult = await c.env.DB.prepare(
       `SELECT * FROM game_updates 
        WHERE game_id = ? 
        ORDER BY created_at DESC`
@@ -4131,7 +4136,7 @@ app.patch("/games/:id", async (c) => {
     return c.json({
       success: true,
       message: `Game ${id} updated${updateText ? " with note" : ""}.`,
-      updates: updates.results || []
+      updates: updatesResult.results || []
     });
   } catch (e) {
     console.error("Update Error:", e);
@@ -4141,7 +4146,7 @@ app.patch("/games/:id", async (c) => {
     }, 500);
   }
 });
-app.get("/games/:id/updates", async (c) => {
+app.get("/api/games/:id/updates", async (c) => {
   const id = c.req.param("id");
   try {
     const { results } = await c.env.DB.prepare(`
@@ -4156,6 +4161,15 @@ app.get("/games/:id/updates", async (c) => {
     console.error("Fetch Updates Error:", e.message);
     return c.json({ error: "Failed to fetch updates" }, 500);
   }
+});
+app.all("/api/*", async (c) => {
+  console.log("🔍 Unmatched API route:", c.req.method, c.req.path);
+  return c.json({
+    error: "Route not found",
+    method: c.req.method,
+    path: c.req.path,
+    availableRoutes: ["/api/login", "/api/games/:id", "/api/games/:id/updates"]
+  }, 404);
 });
 
 const onRequest$2 = defineMiddleware(async (context, next) => {

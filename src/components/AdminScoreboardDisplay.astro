@@ -285,11 +285,34 @@ const toTitleCase = (str: string) => {
         })
       });
 
-      const result = await response.json() as ApiResponse<{ updates: GameUpdate[] }>;
+      let result;
+      try {
+        result = await response.json() as ApiResponse<{ updates: GameUpdate[] }>;
+      } catch (jsonError) {
+        console.error('❌ JSON Parse Error:', jsonError);
+        // Clone the response to read text without consuming the stream
+        const responseClone = response.clone();
+        try {
+          const responseText = await responseClone.text();
+          console.error('❌ Raw response:', responseText);
+        } catch (textError) {
+          console.error('❌ Could not read response text:', textError);
+        }
+        throw new Error('Invalid JSON response from server');
+      }
       
       if (!response.ok) {
+        console.error('❌ PATCH Request Failed - Status:', response.status);
+        console.error('❌ PATCH Response:', result);
+        
         if (response.status === 401) {
-          handleAuthError('Session expired');
+          console.error('❌ 401 Unauthorized - Token may be invalid or expired');
+          // Don't immediately redirect, let user see the error
+          target.textContent = 'Auth Error - Check Console';
+          target.style.backgroundColor = '#d9534f';
+          setTimeout(() => {
+            handleAuthError('Session expired');
+          }, 5000); // Give 5 seconds to read console
           return;
         }
         throw new Error(result.error || 'Failed to update score');
