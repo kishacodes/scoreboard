@@ -4104,17 +4104,39 @@ app.use("*", async (c, next) => {
   await next();
 });
 app.patch("/api/games/:id", async (c) => {
+  console.log("🔧 PATCH endpoint hit for /api/games/:id");
   const id = c.req.param("id");
-  const { ehsScore, oppScore, updateText } = await c.req.json();
-  const user = c.get("user");
-  if (!user) {
-    return c.json({ error: "Unauthorized" }, 401);
-  }
-  const userEmail = user.email;
-  if (!id || ehsScore === void 0 || oppScore === void 0) {
-    return c.json({ error: "Missing required fields" }, 400);
-  }
+  console.log("🔢 Game ID from path param:", id);
+  const authHeader = c.req.header("Authorization");
+  console.log("🔑 Authorization header:", authHeader ? "Present" : "Missing");
   try {
+    const body = await c.req.json();
+    const { ehsScore, oppScore, updateText } = body;
+    console.log("📊 Request body:", { ehsScore, oppScore, updateText: updateText || "(none)" });
+    const user = c.get("user");
+    console.log("👤 User from context:", user ? `${user.email} (${user.role})` : "Not found");
+    if (!user) {
+      console.error("❌ User not authenticated - returning 401");
+      return c.json({ error: "Unauthorized", detail: "No user in context" }, 401);
+    }
+    const userEmail = user.email;
+    console.log("✉️ User email for update:", userEmail);
+    if (!id) {
+      console.error("❌ Missing game ID");
+      return c.json({ error: "Missing game ID" }, 400);
+    }
+    if (ehsScore === void 0 || oppScore === void 0) {
+      console.error("❌ Missing score values:", { ehsScore, oppScore });
+      return c.json({ error: "Missing required score fields" }, 400);
+    }
+    console.log("🔄 Preparing database statements for update");
+    const gameCheck = await c.env.DB.prepare(
+      "SELECT id FROM games2025 WHERE id = ?"
+    ).bind(id).first();
+    if (!gameCheck) {
+      console.error(`❌ Game with ID ${id} not found`);
+      return c.json({ error: `Game with ID ${id} not found` }, 404);
+    }
     const statements = [
       // Update game scores
       c.env.DB.prepare("UPDATE games2025 SET ehsScore = ?, oppScore = ? WHERE id = ?").bind(ehsScore, oppScore, id)
@@ -4127,19 +4149,22 @@ app.patch("/api/games/:id", async (c) => {
         ).bind(id, userEmail, updateText)
       );
     }
+    console.log("⚙️ Executing database batch update");
     await c.env.DB.batch(statements);
+    console.log("✅ Database update successful");
     const updatesResult = await c.env.DB.prepare(
       `SELECT * FROM game_updates 
        WHERE game_id = ? 
        ORDER BY created_at DESC`
     ).bind(id).all();
+    console.log("📤 Returning success response with updates");
     return c.json({
       success: true,
       message: `Game ${id} updated${updateText ? " with note" : ""}.`,
       updates: updatesResult.results || []
     });
   } catch (e) {
-    console.error("Update Error:", e);
+    console.error("❌ Update Error:", e);
     return c.json({
       error: "Failed to update game",
       details: e instanceof Error ? e.message : "Unknown error"

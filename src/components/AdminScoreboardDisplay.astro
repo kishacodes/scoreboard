@@ -271,12 +271,21 @@ const toTitleCase = (str: string) => {
     console.log('✅ Step 3 - Authentication token validated successfully');
 
     try {
+      // Log complete request details for debugging
+      console.log('🔍 PATCH Request details:', {
+        url: `/api/games/${gameId}`,
+        token: token ? `${token.substring(0, 10)}...` : 'none',
+        ehsScore: parseInt(ehsFinal, 10),
+        oppScore: parseInt(oppFinal, 10),
+        updateText: updateText
+      });
+      
       const response = await fetch(`/api/games/${gameId}`, {
         method: 'PATCH',
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${token.trim()}` // Ensure token has no whitespace
         },
         body: JSON.stringify({ 
           ehsScore: parseInt(ehsFinal, 10),
@@ -284,6 +293,8 @@ const toTitleCase = (str: string) => {
           updateText: updateText
         })
       });
+      
+      console.log('🔄 PATCH Response status:', response.status);
 
       let result;
       try {
