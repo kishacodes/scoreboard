@@ -172,18 +172,31 @@ app.use('*', async (c, next) => {
 // Skip auth for login and public routes
 const publicRoutes = [
   '/api/login',
-  '/api/games',
   '/login',
   '/logout',
   '/api/health'
+];
+
+// Define exact public routes
+const exactPublicRoutes = [
+  '/api/games' // Only the main games listing is public, not the individual game endpoints
 ];
 
 // Auth middleware
 app.use('*', async (c, next) => {
   const path = c.req.path;
   
-  // Skip auth for public routes
+  console.log('🚦 Auth middleware checking path:', path);
+  
+  // Skip auth for exact matches first
+  if (exactPublicRoutes.includes(path)) {
+    console.log('✅ Exact public route match, skipping auth for:', path);
+    return next();
+  }
+  
+  // Skip auth for prefix public routes
   if (publicRoutes.some(route => path.startsWith(route))) {
+    console.log('✅ Public route prefix match, skipping auth for:', path);
     return next();
   }
   

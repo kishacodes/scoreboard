@@ -18,7 +18,7 @@ const $$ScoreboardDisplay = createComponent(($$result, $$props, $$slots) => {
     if (!str) return "";
     return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
   };
-  return renderTemplate`${maybeRenderHead()}<div class="scoreboard-grid"> ${games.map((game) => renderTemplate`<div class="game-card"> <div class="game-header"> <span class="game-date">${formatDate(game.gameDate)}</span> <span class="game-level">${toTitleCase(game.teams)}</span> </div> <div class="game-body"> <div class="team"> <span class="team-name">${game.ehs}</span> <span class="team-score">${game.ehsFinal}</span> </div> <div class="team"> <span class="team-name">${game.opp}</span> <span class="team-score">${game.oppFinal}</span> </div> </div> ${game.comments && renderTemplate`<div class="game-footer"> <p class="game-comment">${game.comments}</p> </div>`} </div>`)} </div>`;
+  return renderTemplate`${maybeRenderHead()}<div class="scoreboard-grid"> ${games.map((game) => renderTemplate`<div class="game-card"> <div class="game-header"> <span class="game-date">${formatDate(game.gameDate)}</span> <span class="game-level">${toTitleCase(game.teams)}</span> </div> <div class="game-body"> <div class="team"> <span class="team-name">${game.ehs}</span> <span class="team-score">${game.ehsScore}</span> </div> <div class="team"> <span class="team-name">${game.opp}</span> <span class="team-score">${game.oppScore}</span> </div> </div> ${game.comments && renderTemplate`<div class="game-footer"> <p class="game-comment">${game.comments}</p> </div>`} </div>`)} </div>`;
 }, "/Users/kisha/serverless/scoreboard/src/components/ScoreboardDisplay.astro", void 0);
 
 const $$Astro = createAstro();

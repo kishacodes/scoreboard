@@ -241,20 +241,28 @@ const toTitleCase = (str: string) => {
     // Get the auth token from cookies or localStorage
     const getAuthToken = (): string | null => {
       // Try cookies first
-      const cookieMatch = document.cookie.match(/auth=([^;]+)/);
-      console.log('🔍 Step 2 - Cookie check:', cookieMatch ? 'Found' : 'Not found');
-      if (cookieMatch) {
-        console.log('🔑 Step 2 - Token from cookies:', cookieMatch[1].substring(0, 20) + '...');
-        return cookieMatch[1];
+      const cookies = document.cookie.split('; ');
+      console.log('🍪 All cookies:', cookies);
+      
+      const authCookie = cookies.find(cookie => cookie.startsWith('auth='));
+      console.log('🔍 Auth cookie found:', authCookie ? 'Yes' : 'No');
+      
+      if (authCookie) {
+        const token = authCookie.split('=')[1];
+        console.log('🔑 Token from cookies (first 20 chars):', token.substring(0, 20) + '...');
+        return decodeURIComponent(token); // Make sure to decode URI component
       }
       
       // Fallback to localStorage
       const localToken = localStorage.getItem('authToken');
-      console.log('🔍 Step 2 - localStorage check:', localToken ? 'Found' : 'Not found');
+      console.log('🔍 localStorage token found:', localToken ? 'Yes' : 'No');
+      
       if (localToken) {
-        console.log('🔑 Step 2 - Token from localStorage:', localToken.substring(0, 20) + '...');
+        console.log('🔑 Token from localStorage (first 20 chars):', localToken.substring(0, 20) + '...');
+        return localToken;
       }
-      return localToken;
+      
+      return null;
     };
 
     console.log('🚀 Step 1 - Update Score button clicked for game:', gameId);
