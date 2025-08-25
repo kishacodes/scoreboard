@@ -4049,16 +4049,23 @@ app.use("*", async (c, next) => {
   if (publicRoutes.some((route) => path.startsWith(route))) {
     return next();
   }
+  console.log("🔐 Server Auth Check - Path:", path);
   let token = "";
   const authHeader = c.req.header("Authorization");
   if (authHeader && authHeader.startsWith("Bearer ")) {
     token = authHeader.split(" ")[1];
+    console.log("🔑 Server - Token found in Authorization header:", token.substring(0, 20) + "...");
   } else if (c.req.raw.headers.has("cookie")) {
     const cookies = c.req.raw.headers.get("cookie") || "";
+    console.log("🍪 Server - Cookies received:", cookies.substring(0, 100) + "...");
     const match = cookies.match(/auth=([^;]+)/);
     token = match ? match[1] : "";
+    if (token) {
+      console.log("🔑 Server - Token found in cookies:", token.substring(0, 20) + "...");
+    }
   }
   if (!token) {
+    console.error("❌ Server - No token found in request");
     if (path.startsWith("/api/")) {
       return c.json({ error: "Unauthorized" }, 401);
     }
@@ -4073,8 +4080,9 @@ app.use("*", async (c, next) => {
       ...payload
     };
     c.set("user", user);
+    console.log("✅ Server - Token verified successfully for user:", user.email);
   } catch (e) {
-    console.error("Token verification failed:", e);
+    console.error("❌ Server - Token verification failed:", e);
     if (path.startsWith("/api/")) {
       return c.json({ error: "Invalid or expired token" }, 401);
     }
@@ -4092,19 +4100,19 @@ app.use("*", async (c, next) => {
 });
 app.patch("/games/:id", async (c) => {
   const id = c.req.param("id");
-  const { ehsFinal, oppFinal, updateText } = await c.req.json();
+  const { ehsScore, oppScore, updateText } = await c.req.json();
   const user = c.get("user");
   if (!user) {
     return c.json({ error: "Unauthorized" }, 401);
   }
   const userEmail = user.email;
-  if (!id || ehsFinal === void 0 || oppFinal === void 0) {
+  if (!id || ehsScore === void 0 || oppScore === void 0) {
     return c.json({ error: "Missing required fields" }, 400);
   }
   try {
     const statements = [
       // Update game scores
-      c.env.DB.prepare("UPDATE games2025 SET ehsFinal = ?, oppFinal = ? WHERE id = ?").bind(ehsFinal, oppFinal, id)
+      c.env.DB.prepare("UPDATE games2025 SET ehsScore = ?, oppScore = ? WHERE id = ?").bind(ehsScore, oppScore, id)
     ];
     if (updateText && userEmail) {
       statements.push(

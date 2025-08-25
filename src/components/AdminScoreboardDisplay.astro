@@ -23,11 +23,11 @@ const toTitleCase = (str: string) => {
       <div class="game-body">
         <div class="team">
           <span class="team-name">{game.ehs}</span>
-          <input type="number" class="team-score-input" value={game.ehsFinal} />
+          <input type="number" class="team-score-input" value={game.ehsScore} />
         </div>
         <div class="team">
           <span class="team-name">{game.opp}</span>
-          <input type="number" class="team-score-input" value={game.oppFinal} />
+          <input type="number" class="team-score-input" value={game.oppScore} />
         </div>
       </div>
       <div class="game-update-section">
@@ -207,8 +207,13 @@ const toTitleCase = (str: string) => {
 
   // Handle score updates
   document.addEventListener('click', async (event) => {
+    console.log('🖱️ Click event detected on:', event.target);
     const target = event.target as HTMLElement;
-    if (!target.classList.contains('update-button')) return;
+    if (!target.classList.contains('update-button')) {
+      console.log('❌ Not an update button, ignoring click');
+      return;
+    }
+    console.log('✅ Update button click confirmed');
 
     const card = target.closest('.game-card') as HTMLElement;
     const gameId = card.dataset.gameId;
@@ -237,17 +242,33 @@ const toTitleCase = (str: string) => {
     const getAuthToken = (): string | null => {
       // Try cookies first
       const cookieMatch = document.cookie.match(/auth=([^;]+)/);
-      if (cookieMatch) return cookieMatch[1];
+      console.log('🔍 Step 2 - Cookie check:', cookieMatch ? 'Found' : 'Not found');
+      if (cookieMatch) {
+        console.log('🔑 Step 2 - Token from cookies:', cookieMatch[1].substring(0, 20) + '...');
+        return cookieMatch[1];
+      }
       
       // Fallback to localStorage
-      return localStorage.getItem('authToken');
+      const localToken = localStorage.getItem('authToken');
+      console.log('🔍 Step 2 - localStorage check:', localToken ? 'Found' : 'Not found');
+      if (localToken) {
+        console.log('🔑 Step 2 - Token from localStorage:', localToken.substring(0, 20) + '...');
+      }
+      return localToken;
     };
+
+    console.log('🚀 Step 1 - Update Score button clicked for game:', gameId);
+    console.log('📊 Step 3 - Score values extracted - EHS:', ehsFinal, 'OPP:', oppFinal);
+    console.log('📝 Step 3 - Update text:', updateText || '(none)');
 
     const token = getAuthToken();
     if (!token) {
+      console.error('❌ Step 3 - Authentication failed: No token found');
       handleAuthError('No authentication token found');
       return;
     }
+    
+    console.log('✅ Step 3 - Authentication token validated successfully');
 
     try {
       const response = await fetch(`/api/games/${gameId}`, {
@@ -258,8 +279,8 @@ const toTitleCase = (str: string) => {
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({ 
-          ehsFinal: parseInt(ehsFinal, 10),
-          oppFinal: parseInt(oppFinal, 10),
+          ehsScore: parseInt(ehsFinal, 10),
+          oppScore: parseInt(oppFinal, 10),
           updateText: updateText
         })
       });
@@ -318,8 +339,18 @@ const toTitleCase = (str: string) => {
 
   // Load update history for all games on page load
   document.addEventListener('DOMContentLoaded', () => {
+    console.log('🚀 AdminScoreboardDisplay script loaded');
+    console.log('📄 Current page body dataset:', document.body.dataset);
+    console.log('🎯 Game cards found:', document.querySelectorAll('.game-card').length);
+    console.log('🔘 Update buttons found:', document.querySelectorAll('.update-button').length);
+    
     // Check if we're on the admin page
-    if (document.body.dataset.page !== 'admin') return;
+    const isAdminPage = document.querySelector('[data-page="admin"]') !== null;
+    if (!isAdminPage) {
+      console.log('❌ Not on admin page, skipping initialization');
+      return;
+    }
+    console.log('✅ Admin page confirmed');
     
     document.querySelectorAll('.game-card').forEach(card => {
       const gameId = (card as HTMLElement).dataset.gameId;
