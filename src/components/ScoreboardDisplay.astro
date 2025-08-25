@@ -29,11 +29,17 @@ const toTitleCase = (str: string) => {
           <span class="team-name">{game.opp}</span>
           <span class="team-score">{game.oppScore}</span>
         </div>
-        {(game.qtr || game.timeInqtr) && (
+        {game.final === 1 ? (
           <div class="game-status">
-            {game.qtr && <span class="game-quarter">{game.qtr}</span>}
-            {game.timeInqtr && <span class="game-time">{game.timeInqtr}</span>}
+            <span class="game-final">FINAL</span>
           </div>
+        ) : (
+          (game.qtr || game.timeInqtr) && (
+            <div class="game-status">
+              {game.qtr && <span class="game-quarter">{game.qtr}</span>}
+              {game.timeInqtr && <span class="game-time">{game.timeInqtr}</span>}
+            </div>
+          )
         )}
       </div>
       <div class="game-footer">
@@ -83,6 +89,16 @@ const toTitleCase = (str: string) => {
   
   .game-time {
     font-family: monospace;
+  }
+  
+  .game-final {
+    font-weight: bold;
+    color: #d9534f;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    padding: 0.25rem 0.5rem;
+    border: 1px solid #d9534f;
+    border-radius: 3px;
   }
   
   .game-updates {

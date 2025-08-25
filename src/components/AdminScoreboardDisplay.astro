@@ -31,9 +31,10 @@ const toTitleCase = (str: string) => {
         </div>
         <div class="game-over-container">
           <label class="game-over-label">
-            <input type="checkbox" class="game-over-checkbox" />
+            <input type="checkbox" class="game-over-checkbox" value="1" checked={game.final === 1} />
             Game Over?
           </label>
+          {game.final === 1 && <span class="game-final">FINAL</span>}
         </div>
       </div>
       <div class="game-update-section">
@@ -176,9 +177,22 @@ const toTitleCase = (str: string) => {
   }
   
   .game-over-container {
+    margin-top: 15px;
+    text-align: center;
     display: flex;
     justify-content: center;
-    margin-top: 0.75rem;
+    align-items: center;
+    gap: 10px;
+  }
+  
+  .game-final {
+    font-weight: bold;
+    color: #d9534f;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    padding: 0.25rem 0.5rem;
+    border: 1px solid #d9534f;
+    border-radius: 3px;
   }
   
   .game-over-label {
@@ -285,14 +299,14 @@ const toTitleCase = (str: string) => {
     const gameId = card.dataset.gameId;
     const scoreInputs = card.querySelectorAll('.team-score-input') as NodeListOf<HTMLInputElement>;
     const updateInput = card.querySelector('.update-text-input') as HTMLInputElement;
-    const quarterSelectElement = card.querySelector('.quarter-select');
-    const quarterSelect = quarterSelectElement instanceof HTMLSelectElement ? quarterSelectElement : null;
+    const qtrSelectElement = card.querySelector('.quarter-select');
+    const qtrSelect = qtrSelectElement instanceof HTMLSelectElement ? qtrSelectElement : null;
     const timeInputElement = card.querySelector('.time-input');
     const timeInput = timeInputElement instanceof HTMLInputElement ? timeInputElement : null;
     const gameOverCheckbox = card.querySelector('.game-over-checkbox') as HTMLInputElement;
     
     const updateText = updateInput?.value.trim() || '';
-    const quarter = quarterSelect?.value || '';
+    const qtr = qtrSelect?.value || '';
     const timeInqtr = timeInput?.value.trim() || '';
     const isFinal = gameOverCheckbox?.checked || false;
 
@@ -341,8 +355,9 @@ const toTitleCase = (str: string) => {
     };
 
     console.log('🚀 Step 1 - Update Score button clicked for game:', gameId);
-    console.log('📊 Step 3 - Score values extracted - EHS:', ehsFinal, 'OPP:', oppFinal);
+    console.log('📊 Step 3 - Score values extracted - EHS:', ehsScore, 'OPP:', oppScore);
     console.log('📝 Step 3 - Update text:', updateText || '(none)');
+    console.log('🏁 Step 3 - Game over status:', isFinal ? 'Final' : 'In progress');
 
     const token = getAuthToken();
     if (!token) {
@@ -361,7 +376,9 @@ const toTitleCase = (str: string) => {
         ehsScore: parseInt(ehsScore, 10),
         oppScore: parseInt(oppScore, 10),
         updateText: updateText,
-        isFinal: isFinal
+        isFinal: isFinal,
+        qtr: qtr,
+        timeInqtr: timeInqtr
       });
       
       // Create request body with or without final field based on checkbox
@@ -369,7 +386,7 @@ const toTitleCase = (str: string) => {
         ehsScore: parseInt(ehsScore, 10),
         oppScore: parseInt(oppScore, 10),
         updateText: updateText,
-        qtr: quarter,
+        qtr: qtr,
         timeInqtr: timeInqtr
       };
       
@@ -402,6 +419,22 @@ const toTitleCase = (str: string) => {
         try {
           const responseText = await responseClone.text();
           console.error('❌ Raw response:', responseText);
+          
+          // Display visible error for debugging
+          target.textContent = 'JSON Parse Error';
+          target.style.backgroundColor = '#d9534f';
+          
+          // Add more visible debugging to page
+          const errorDiv = document.createElement('div');
+          errorDiv.style.color = 'red';
+          errorDiv.style.fontFamily = 'monospace';
+          errorDiv.style.whiteSpace = 'pre-wrap';
+          errorDiv.style.padding = '10px';
+          errorDiv.style.margin = '10px 0';
+          errorDiv.style.border = '1px solid red';
+          errorDiv.textContent = `Error parsing JSON: ${responseText.substring(0, 500)}${responseText.length > 500 ? '...' : ''}`;
+          card.appendChild(errorDiv);
+          
         } catch (textError) {
           console.error('❌ Could not read response text:', textError);
         }

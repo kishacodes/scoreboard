@@ -290,9 +290,17 @@ app.patch('/api/games/:id', async (c) => {
   console.log('🔑 Authorization header:', authHeader ? 'Present' : 'Missing');
   try {
     const body = await c.req.json();
+    console.log('📊 Full request body:', body);
     const { ehsScore, oppScore, updateText, qtr, timeInqtr, final, ehsFinal, oppFinal } = body;
-    console.log('📊 Received game data:', { ehsScore, oppScore, qtr, timeInqtr, final });
-    console.log('📊 Request body:', { ehsScore, oppScore, updateText: updateText || '(none)', final: final || 0 });
+    console.log('📊 Received game data:', { ehsScore, oppScore, qtr, timeInqtr, final: final || 0 });
+    console.log('📊 Request body processed values:', { 
+      ehsScore: typeof ehsScore, 
+      oppScore: typeof oppScore, 
+      updateText: updateText || '(none)', 
+      final: final === 1 ? 'YES - FINAL' : 'no', 
+      ehsFinal: ehsFinal || 'using ehsScore', 
+      oppFinal: oppFinal || 'using oppScore' 
+    });
     
     // Get user from context (set by auth middleware)
     const user = c.get('user');
@@ -334,15 +342,23 @@ app.patch('/api/games/:id', async (c) => {
     let updateStatement;
     const params = [];
     
-    if (final === 1) {
+    // Log database connection status
+    console.log('🔗 DB connection check:', c.env.DB ? 'Available' : 'NOT AVAILABLE');
+    
+    // Check if final is explicitly 1 (could be string '1' or number 1)
+    const isFinal = final === 1 || final === '1';
+    console.log('👀 Final check - raw value:', final, 'interpreted as:', isFinal ? 'FINAL' : 'not final');
+    
+    if (isFinal) {
       // If game is marked as final, update all fields including final status and final scores
       updateStatement = "UPDATE games2025 SET ehsScore = ?, oppScore = ?, qtr = ?, timeInqtr = ?, final = ?, ehsFinal = ?, oppFinal = ? WHERE id = ?";
-      params.push(ehsScore, oppScore, qtr || null, timeInqtr || null, final, ehsFinal || ehsScore, oppFinal || oppScore, id);
-      console.log('🏁 Marking game as FINAL with scores - EHS:', ehsFinal || ehsScore, 'OPP:', oppFinal || oppScore);
+      params.push(ehsScore, oppScore, qtr || null, timeInqtr || null, 1, ehsFinal || ehsScore, oppFinal || oppScore, id);
+      console.log('🏁 Marking game as FINAL with params:', JSON.stringify(params));
     } else {
       // Regular score update without changing final status
       updateStatement = "UPDATE games2025 SET ehsScore = ?, oppScore = ?, qtr = ?, timeInqtr = ? WHERE id = ?";
       params.push(ehsScore, oppScore, qtr || null, timeInqtr || null, id);
+      console.log('📊 Regular update with params:', JSON.stringify(params));
     }
     
     const statements = [

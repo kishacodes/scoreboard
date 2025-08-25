@@ -68,6 +68,17 @@
     align-self: flex-end;
     height: 100%;
   }
+  
+  /* Game Final Status Styling */
+  .game-final {
+    font-weight: bold;
+    color: #d9534f;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    padding: 0.25rem 0.5rem;
+    border: 1px solid #d9534f;
+    border-radius: 3px;
+  }
 </style>
 
 <script>
@@ -92,6 +103,7 @@
     qtr: string | null;
     timeInqtr: string | null;
     comments: string;
+    final?: number;
     updates?: GameUpdate[];
   }
 
@@ -133,13 +145,23 @@
         </div>
       `;
     } else {
-      // Prepare game status display
-      const statusHTML = (game.qtr || game.timeInqtr) ? `
-        <div class="game-status">
-          ${game.qtr ? `<span class="game-quarter">${game.qtr}</span>` : ''}
-          ${game.timeInqtr ? `<span class="game-time">${game.timeInqtr}</span>` : ''}
-        </div>
-      ` : '';
+      // Prepare game status display - show FINAL for completed games
+      let statusHTML = '';
+      
+      if (game.final === 1) {
+        statusHTML = `
+          <div class="game-status">
+            <span class="game-final">FINAL</span>
+          </div>
+        `;
+      } else if (game.qtr || game.timeInqtr) {
+        statusHTML = `
+          <div class="game-status">
+            ${game.qtr ? `<span class="game-quarter">${game.qtr}</span>` : ''}
+            ${game.timeInqtr ? `<span class="game-time">${game.timeInqtr}</span>` : ''}
+          </div>
+        `;
+      }
       
       // Prepare updates section if available
       const updatesHTML = game.updates && game.updates.length > 0 ? `
