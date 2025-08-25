@@ -4128,9 +4128,9 @@ app.patch("/api/games/:id", async (c) => {
   console.log("🔑 Authorization header:", authHeader ? "Present" : "Missing");
   try {
     const body = await c.req.json();
-    const { ehsScore, oppScore, updateText, qtr, timeInqtr } = body;
-    console.log("📊 Received game data:", { ehsScore, oppScore, qtr, timeInqtr });
-    console.log("📊 Request body:", { ehsScore, oppScore, updateText: updateText || "(none)" });
+    const { ehsScore, oppScore, updateText, qtr, timeInqtr, final, ehsFinal, oppFinal } = body;
+    console.log("📊 Received game data:", { ehsScore, oppScore, qtr, timeInqtr, final });
+    console.log("📊 Request body:", { ehsScore, oppScore, updateText: updateText || "(none)", final: final || 0 });
     const user = c.get("user");
     console.log("👤 User from context:", user ? `${user.email} (${user.role})` : "Not found");
     if (!user) {
@@ -4155,9 +4155,19 @@ app.patch("/api/games/:id", async (c) => {
       console.error(`❌ Game with ID ${id} not found`);
       return c.json({ error: `Game with ID ${id} not found` }, 404);
     }
+    let updateStatement;
+    const params = [];
+    if (final === 1) {
+      updateStatement = "UPDATE games2025 SET ehsScore = ?, oppScore = ?, qtr = ?, timeInqtr = ?, final = ?, ehsFinal = ?, oppFinal = ? WHERE id = ?";
+      params.push(ehsScore, oppScore, qtr || null, timeInqtr || null, final, ehsFinal || ehsScore, oppFinal || oppScore, id);
+      console.log("🏁 Marking game as FINAL with scores - EHS:", ehsFinal || ehsScore, "OPP:", oppFinal || oppScore);
+    } else {
+      updateStatement = "UPDATE games2025 SET ehsScore = ?, oppScore = ?, qtr = ?, timeInqtr = ? WHERE id = ?";
+      params.push(ehsScore, oppScore, qtr || null, timeInqtr || null, id);
+    }
     const statements = [
-      // Update game scores and quarter/time information
-      c.env.DB.prepare("UPDATE games2025 SET ehsScore = ?, oppScore = ?, qtr = ?, timeInqtr = ? WHERE id = ?").bind(ehsScore, oppScore, qtr || null, timeInqtr || null, id)
+      // Update game information with the appropriate statement
+      c.env.DB.prepare(updateStatement).bind(...params)
     ];
     if (updateText && userEmail) {
       statements.push(
