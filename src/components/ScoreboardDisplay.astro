@@ -36,11 +36,25 @@ const toTitleCase = (str: string) => {
           </div>
         )}
       </div>
-      {game.comments && (
-        <div class="game-footer">
+      <div class="game-footer">
+        {game.comments && (
           <p class="game-comment">{game.comments}</p>
-        </div>
-      )}
+        )}
+        
+        {game.updates && game.updates.length > 0 && (
+          <div class="game-updates">
+            <h4 class="updates-heading">Recent Updates</h4>
+            <ul class="updates-list">
+              {game.updates.map((update: any) => (
+                <li class="update-item">
+                  <span class="update-text">{update.update_text}</span>
+                  <span class="update-timestamp">{update.created_at}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
     </div>
   ))}
 </div>
@@ -65,5 +79,45 @@ const toTitleCase = (str: string) => {
   
   .game-time {
     font-family: monospace;
+  }
+  
+  .game-updates {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #eee;
+  }
+  
+  .updates-heading {
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin: 0 0 0.5rem 0;
+    color: #555;
+  }
+  
+  .updates-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    font-size: 0.85rem;
+  }
+  
+  .update-item {
+    padding: 0.5rem;
+    margin-bottom: 0.5rem;
+    background-color: #f9f9f9;
+    border-left: 3px solid #ddd;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .update-text {
+    color: #333;
+  }
+  
+  .update-timestamp {
+    font-size: 0.75rem;
+    color: #888;
+    margin-top: 0.25rem;
+    align-self: flex-end;
   }
 </style>

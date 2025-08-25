@@ -18,7 +18,7 @@ const $$ScoreboardDisplay = createComponent(($$result, $$props, $$slots) => {
     if (!str) return "";
     return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
   };
-  return renderTemplate`${maybeRenderHead()}<div class="scoreboard-grid" data-astro-cid-f4kmggoj> ${games.map((game) => renderTemplate`<div class="game-card" data-astro-cid-f4kmggoj> <div class="game-header" data-astro-cid-f4kmggoj> <span class="game-date" data-astro-cid-f4kmggoj>${formatDate(game.gameDate)}</span> <span class="game-level" data-astro-cid-f4kmggoj>${toTitleCase(game.teams)}</span> </div> <div class="game-body" data-astro-cid-f4kmggoj> <div class="team" data-astro-cid-f4kmggoj> <span class="team-name" data-astro-cid-f4kmggoj>${game.ehs}</span> <span class="team-score" data-astro-cid-f4kmggoj>${game.ehsScore}</span> </div> <div class="team" data-astro-cid-f4kmggoj> <span class="team-name" data-astro-cid-f4kmggoj>${game.opp}</span> <span class="team-score" data-astro-cid-f4kmggoj>${game.oppScore}</span> </div> ${(game.qtr || game.timeInqtr) && renderTemplate`<div class="game-status" data-astro-cid-f4kmggoj> ${game.qtr && renderTemplate`<span class="game-quarter" data-astro-cid-f4kmggoj>${game.qtr}</span>`} ${game.timeInqtr && renderTemplate`<span class="game-time" data-astro-cid-f4kmggoj>${game.timeInqtr}</span>`} </div>`} </div> ${game.comments && renderTemplate`<div class="game-footer" data-astro-cid-f4kmggoj> <p class="game-comment" data-astro-cid-f4kmggoj>${game.comments}</p> </div>`} </div>`)} </div> `;
+  return renderTemplate`${maybeRenderHead()}<div class="scoreboard-grid" data-astro-cid-f4kmggoj> ${games.map((game) => renderTemplate`<div class="game-card" data-astro-cid-f4kmggoj> <div class="game-header" data-astro-cid-f4kmggoj> <span class="game-date" data-astro-cid-f4kmggoj>${formatDate(game.gameDate)}</span> <span class="game-level" data-astro-cid-f4kmggoj>${toTitleCase(game.teams)}</span> </div> <div class="game-body" data-astro-cid-f4kmggoj> <div class="team" data-astro-cid-f4kmggoj> <span class="team-name" data-astro-cid-f4kmggoj>${game.ehs}</span> <span class="team-score" data-astro-cid-f4kmggoj>${game.ehsScore}</span> </div> <div class="team" data-astro-cid-f4kmggoj> <span class="team-name" data-astro-cid-f4kmggoj>${game.opp}</span> <span class="team-score" data-astro-cid-f4kmggoj>${game.oppScore}</span> </div> ${(game.qtr || game.timeInqtr) && renderTemplate`<div class="game-status" data-astro-cid-f4kmggoj> ${game.qtr && renderTemplate`<span class="game-quarter" data-astro-cid-f4kmggoj>${game.qtr}</span>`} ${game.timeInqtr && renderTemplate`<span class="game-time" data-astro-cid-f4kmggoj>${game.timeInqtr}</span>`} </div>`} </div> <div class="game-footer" data-astro-cid-f4kmggoj> ${game.comments && renderTemplate`<p class="game-comment" data-astro-cid-f4kmggoj>${game.comments}</p>`} ${game.updates && game.updates.length > 0 && renderTemplate`<div class="game-updates" data-astro-cid-f4kmggoj> <h4 class="updates-heading" data-astro-cid-f4kmggoj>Recent Updates</h4> <ul class="updates-list" data-astro-cid-f4kmggoj> ${game.updates.map((update) => renderTemplate`<li class="update-item" data-astro-cid-f4kmggoj> <span class="update-text" data-astro-cid-f4kmggoj>${update.update_text}</span> <span class="update-timestamp" data-astro-cid-f4kmggoj>${update.created_at}</span> </li>`)} </ul> </div>`} </div> </div>`)} </div> `;
 }, "/Users/kisha/serverless/scoreboard/src/components/ScoreboardDisplay.astro", void 0);
 
 const $$Astro = createAstro();
@@ -27,11 +27,20 @@ const $$Index = createComponent(async ($$result, $$props, $$slots) => {
   Astro2.self = $$Index;
   let games = [];
   try {
-    const response = await fetch(`${Astro2.url.origin}/api/games`);
-    if (response.ok) {
-      games = await response.json();
+    const gamesResponse = await fetch(`${Astro2.url.origin}/api/games`);
+    if (gamesResponse.ok) {
+      games = await gamesResponse.json();
+      for (const game of games) {
+        const updatesResponse = await fetch(`${Astro2.url.origin}/api/games/${game.id}/updates`);
+        if (updatesResponse.ok) {
+          game.updates = await updatesResponse.json();
+        } else {
+          console.error(`Updates API Error: ${updatesResponse.status} ${updatesResponse.statusText}`);
+          game.updates = [];
+        }
+      }
     } else {
-      console.error(`API Error: ${response.status} ${response.statusText}`);
+      console.error(`API Error: ${gamesResponse.status} ${gamesResponse.statusText}`);
     }
   } catch (error) {
     console.error("Fetch Error:", error.message);

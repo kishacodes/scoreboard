@@ -6,11 +6,23 @@ import ScoreboardDisplay from '../components/ScoreboardDisplay.astro';
 // This code runs on the server, at build time or on request.
 let games = [];
 try {
-  const response = await fetch(`${Astro.url.origin}/api/games`);
-  if (response.ok) {
-    games = await response.json();
+  // Fetch all games
+  const gamesResponse = await fetch(`${Astro.url.origin}/api/games`);
+  if (gamesResponse.ok) {
+    games = await gamesResponse.json();
+    
+    // Fetch updates for each game
+    for (const game of games) {
+      const updatesResponse = await fetch(`${Astro.url.origin}/api/games/${game.id}/updates`);
+      if (updatesResponse.ok) {
+        game.updates = await updatesResponse.json();
+      } else {
+        console.error(`Updates API Error: ${updatesResponse.status} ${updatesResponse.statusText}`);
+        game.updates = [];
+      }
+    }
   } else {
-    console.error(`API Error: ${response.status} ${response.statusText}`);
+    console.error(`API Error: ${gamesResponse.status} ${gamesResponse.statusText}`);
   }
 } catch (error) {
   console.error('Fetch Error:', (error as Error).message);
