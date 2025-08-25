@@ -1,4 +1,4 @@
-import"./hoisted.DxfSxqbr.js";function k(s,e){if(!s.dataset.gameId)return;const n=s.querySelector(".update-history");if(n){if(!e||e.length===0){n.style.display="none";return}n.style.display="block",n.innerHTML=e.map(a=>`
+import"./hoisted.Dm2zTYwB.js";function k(s,e){if(!s.dataset.gameId)return;const n=s.querySelector(".update-history");if(n){if(!e||e.length===0){n.style.display="none";return}n.style.display="block",n.innerHTML=e.map(a=>`
       <div class="update-item">
         <div class="update-meta">
           <span class="update-user">${(a.user_email||"").split("@")[0]}</span>

@@ -43,15 +43,19 @@ const toTitleCase = (str: string) => {
         
         {game.updates && game.updates.length > 0 && (
           <div class="game-updates">
-            <h4 class="updates-heading">Recent Updates</h4>
-            <ul class="updates-list">
-              {game.updates.map((update: any) => (
-                <li class="update-item">
-                  <span class="update-text">{update.update_text}</span>
-                  <span class="update-timestamp">{update.created_at}</span>
-                </li>
-              ))}
-            </ul>
+            <details class="updates-details">
+              <summary class="updates-heading">Recent Updates ({game.updates.length})</summary>
+              <ul class="updates-list">
+                {game.updates.map((update: any) => (
+                  <li class="update-item">
+                    <div class="update-row">
+                      <span class="update-text" title={update.update_text}>{update.update_text}</span>
+                      <span class="update-timestamp">{update.created_at}</span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </details>
           </div>
         )}
       </div>
@@ -90,14 +94,37 @@ const toTitleCase = (str: string) => {
   .updates-heading {
     font-size: 0.9rem;
     font-weight: 600;
-    margin: 0 0 0.5rem 0;
     color: #555;
+    cursor: pointer;
+  }
+  
+  .updates-details {
+    width: 100%;
+  }
+  
+  .updates-details summary {
+    padding: 0.2rem 0;
+    list-style: none;
+    display: flex;
+    align-items: center;
+  }
+  
+  .updates-details summary::before {
+    content: '▶';
+    display: inline-block;
+    margin-right: 0.5rem;
+    font-size: 0.7rem;
+    color: #777;
+  }
+  
+  .updates-details[open] summary::before {
+    content: '▼';
   }
   
   .updates-list {
     list-style: none;
     padding: 0;
-    margin: 0;
+    margin: 0.5rem 0 0 0;
     font-size: 0.85rem;
   }
   
@@ -106,18 +133,26 @@ const toTitleCase = (str: string) => {
     margin-bottom: 0.5rem;
     background-color: #f9f9f9;
     border-left: 3px solid #ddd;
+  }
+  
+  .update-row {
     display: flex;
-    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
   }
   
   .update-text {
     color: #333;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1;
   }
   
   .update-timestamp {
     font-size: 0.75rem;
     color: #888;
-    margin-top: 0.25rem;
-    align-self: flex-end;
+    white-space: nowrap;
   }
 </style>
