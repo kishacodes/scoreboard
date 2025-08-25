@@ -4044,13 +4044,21 @@ const publicRoutes = [
 ];
 const exactPublicRoutes = [
   "/api/games"
-  // Only the main games listing is public, not the individual game endpoints
+  // The main games listing is public
+];
+const publicRoutePatterns = [
+  /^\/api\/games\/\d+\/updates$/
+  // Game updates endpoints are public
 ];
 app.use("*", async (c, next) => {
   const path = c.req.path;
   console.log("🚦 Auth middleware checking path:", path);
   if (exactPublicRoutes.includes(path)) {
     console.log("✅ Exact public route match, skipping auth for:", path);
+    return next();
+  }
+  if (publicRoutePatterns.some((pattern) => pattern.test(path))) {
+    console.log("✅ Pattern match, skipping auth for:", path);
     return next();
   }
   if (publicRoutes.some((route) => path.startsWith(route))) {

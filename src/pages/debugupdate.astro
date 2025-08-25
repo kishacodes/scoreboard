@@ -1,0 +1,132 @@
+---
+import Layout from '../layouts/Layout.astro';
+import ScoreboardDisplay from '../components/ScoreboardDisplay.astro';
+
+// Mock data with updates to test the display
+const mockGames = [
+  {
+    id: 31,
+    teams: "varsity",
+    ehs: "Emerson High",
+    opp: "McKinney",
+    gameDate: "2025-08-23",
+    comments: "Home game",
+    ehsScore: 28,
+    oppScore: 14,
+    ehsFinal: 0,
+    oppFinal: 0,
+    final: 0,
+    qtr: "2nd quarter",
+    timeInqtr: "7:32",
+    level: "varsity",
+    createdAt: "2025-08-24 19:06:05",
+    updates: [
+      {
+        id: 1,
+        game_id: 31,
+        user_email: "coach@example.com",
+        update_text: "Touchdown by #12 Smith! Emerson takes the lead.",
+        created_at: "2025-08-23 19:45:00"
+      },
+      {
+        id: 2,
+        game_id: 31,
+        user_email: "coach@example.com",
+        update_text: "End of first quarter: Emerson 7, McKinney 0",
+        created_at: "2025-08-23 19:30:00"
+      },
+      {
+        id: 3,
+        game_id: 31,
+        user_email: "coach@example.com",
+        update_text: "Game started! Emerson received the kickoff.",
+        created_at: "2025-08-23 19:00:00"
+      }
+    ]
+  },
+  {
+    id: 11,
+    teams: "junior varsity",
+    ehs: "Emerson High",
+    opp: "McKinney",
+    gameDate: "2025-08-28",
+    comments: "Season opener",
+    ehsScore: 0,
+    oppScore: 0,
+    ehsFinal: 0,
+    oppFinal: 0,
+    final: 0,
+    qtr: null,
+    timeInqtr: null,
+    level: "jv",
+    createdAt: "2025-07-18 00:58:48",
+    updates: [] // No updates for this game
+  }
+];
+---
+
+<Layout title="Debug Updates - Emerson Mavericks Football Scoreboard">
+  <main>
+    <header>
+      <h1>Debug Updates Display</h1>
+      <p>This page contains mock data with game updates to test the display component</p>
+    </header>
+    
+    <div class="scoreboard-container">
+      <ScoreboardDisplay games={mockGames} />
+    </div>
+
+    <div class="debug-json">
+      <h3>Mock Data Structure</h3>
+      <pre>{JSON.stringify(mockGames, null, 2)}</pre>
+    </div>
+  </main>
+</Layout>
+
+<style>
+  main {
+    max-width: 1200px;
+    margin: auto;
+    padding: 1.5rem;
+  }
+  header {
+    background-color: var(--navy-blue);
+    color: white;
+    padding: 2rem 1.5rem;
+    text-align: center;
+    border-radius: 0 0 8px 8px;
+    margin-bottom: 2rem;
+  }
+  h1 {
+    margin: 0;
+    font-size: 2.5rem;
+  }
+  p {
+    margin: 0.5rem 0 0;
+    opacity: 0.8;
+  }
+  .scoreboard-container {
+    margin-top: 2rem;
+  }
+  .debug-json {
+    margin-top: 3rem;
+    padding: 1rem;
+    background-color: #f5f5f5;
+    border-radius: 4px;
+    border: 1px solid #ddd;
+  }
+  .debug-json h3 {
+    margin-top: 0;
+    color: #333;
+  }
+  pre {
+    white-space: pre-wrap;
+    font-family: monospace;
+    font-size: 0.85rem;
+    overflow-x: auto;
+    background-color: #f9f9f9;
+    padding: 1rem;
+    border-radius: 4px;
+    border: 1px solid #eee;
+  }
+</style>

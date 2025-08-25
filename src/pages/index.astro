@@ -2,6 +2,7 @@
 import Layout from '../layouts/Layout.astro';
 import ScoreboardFilter from '../components/ScoreboardFilter.astro';
 import ScoreboardDisplay from '../components/ScoreboardDisplay.astro';
+import DebugDisplay from '../components/DebugDisplay.astro';
 
 // This code runs on the server, at build time or on request.
 let games = [];
@@ -14,8 +15,12 @@ try {
     // Fetch updates for each game
     for (const game of games) {
       const updatesResponse = await fetch(`${Astro.url.origin}/api/games/${game.id}/updates`);
+      console.log(`Fetching updates for game ${game.id}: ${updatesResponse.status}`);
+      
       if (updatesResponse.ok) {
-        game.updates = await updatesResponse.json();
+        const updates = await updatesResponse.json();
+        console.log(`Game ${game.id} updates:`, updates);
+        game.updates = updates;
       } else {
         console.error(`Updates API Error: ${updatesResponse.status} ${updatesResponse.statusText}`);
         game.updates = [];
@@ -39,6 +44,10 @@ try {
 
     <div class="scoreboard-container">
       <ScoreboardDisplay games={games} />
+    </div>
+
+    <div class="debug-section">
+      <DebugDisplay data={games} title="Games Data (Including Updates)" />
     </div>
 
   </main>

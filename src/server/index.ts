@@ -179,7 +179,12 @@ const publicRoutes = [
 
 // Define exact public routes
 const exactPublicRoutes = [
-  '/api/games' // Only the main games listing is public, not the individual game endpoints
+  '/api/games' // The main games listing is public
+];
+
+// Define public route patterns (using regex patterns)
+const publicRoutePatterns = [
+  /^\/api\/games\/\d+\/updates$/ // Game updates endpoints are public
 ];
 
 // Auth middleware
@@ -191,6 +196,12 @@ app.use('*', async (c, next) => {
   // Skip auth for exact matches first
   if (exactPublicRoutes.includes(path)) {
     console.log('✅ Exact public route match, skipping auth for:', path);
+    return next();
+  }
+  
+  // Skip auth for regex pattern matches
+  if (publicRoutePatterns.some(pattern => pattern.test(path))) {
+    console.log('✅ Pattern match, skipping auth for:', path);
     return next();
   }
   
@@ -362,7 +373,7 @@ app.patch('/api/games/:id', async (c) => {
   }
 });
 
-// Get updates for a game
+// Get updates for a game - public endpoint
 app.get('/api/games/:id/updates', async (c) => {
   const id = c.req.param('id');
   

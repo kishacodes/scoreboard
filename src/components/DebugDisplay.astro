@@ -1,0 +1,39 @@
+---
+// Simple component to display debug information
+const { data, title = "Debug Data" } = Astro.props;
+---
+
+<div class="debug-container">
+  <h3 class="debug-title">{title}</h3>
+  <pre class="debug-content">{JSON.stringify(data, null, 2)}</pre>
+</div>
+
+<style>
+  .debug-container {
+    margin: 1rem 0;
+    padding: 1rem;
+    border: 2px dashed #ff6b6b;
+    border-radius: 4px;
+    background-color: #fff8f8;
+    font-family: monospace;
+    color: #333;
+  }
+  
+  .debug-title {
+    margin-top: 0;
+    color: #ff3333;
+    font-size: 1.2rem;
+  }
+  
+  .debug-content {
+    overflow-x: auto;
+    white-space: pre-wrap;
+    font-size: 0.9rem;
+    background-color: #f9f9f9;
+    padding: 1rem;
+    border-radius: 4px;
+    border: 1px solid #eee;
+    max-height: 300px;
+    overflow-y: auto;
+  }
+</style>
