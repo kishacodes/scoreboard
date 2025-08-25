@@ -32,6 +32,21 @@ const toTitleCase = (str: string) => {
       </div>
       <div class="game-update-section">
         <div class="update-input-group">
+          <div class="game-meta-inputs">
+            <select class="quarter-select" aria-label="Quarter">
+              <option value="">-- Quarter --</option>
+              <option value="1st quarter">1st Quarter</option>
+              <option value="2nd quarter">2nd Quarter</option>
+              <option value="3rd quarter">3rd Quarter</option>
+              <option value="4th quarter">4th Quarter</option>
+            </select>
+            <input 
+              type="text" 
+              class="time-input" 
+              placeholder="Time (e.g. 4:30)" 
+              aria-label="Time in quarter"
+            />
+          </div>
           <input 
             type="text" 
             class="update-text-input" 
@@ -60,8 +75,31 @@ const toTitleCase = (str: string) => {
 
   .update-input-group {
     display: flex;
+    flex-direction: column;
     gap: 0.5rem;
     margin-bottom: 0.5rem;
+  }
+  
+  .game-meta-inputs {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+  }
+  
+  .quarter-select {
+    flex: 1;
+    padding: 0.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    font-size: 0.9rem;
+  }
+  
+  .time-input {
+    width: 120px;
+    padding: 0.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    font-size: 0.9rem;
   }
 
   .update-text-input {
@@ -219,7 +257,14 @@ const toTitleCase = (str: string) => {
     const gameId = card.dataset.gameId;
     const scoreInputs = card.querySelectorAll('.team-score-input') as NodeListOf<HTMLInputElement>;
     const updateInput = card.querySelector('.update-text-input') as HTMLInputElement;
+    const quarterSelectElement = card.querySelector('.quarter-select');
+    const quarterSelect = quarterSelectElement instanceof HTMLSelectElement ? quarterSelectElement : null;
+    const timeInputElement = card.querySelector('.time-input');
+    const timeInput = timeInputElement instanceof HTMLInputElement ? timeInputElement : null;
+    
     const updateText = updateInput?.value.trim() || '';
+    const quarter = quarterSelect?.value || '';
+    const timeInqtr = timeInput?.value.trim() || '';
 
     const ehsFinal = scoreInputs[0].value;
     const oppFinal = scoreInputs[1].value;
@@ -298,7 +343,9 @@ const toTitleCase = (str: string) => {
         body: JSON.stringify({ 
           ehsScore: parseInt(ehsFinal, 10),
           oppScore: parseInt(oppFinal, 10),
-          updateText: updateText
+          updateText: updateText,
+          qtr: quarter,
+          timeInqtr: timeInqtr
         })
       });
       

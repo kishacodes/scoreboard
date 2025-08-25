@@ -4120,7 +4120,8 @@ app.patch("/api/games/:id", async (c) => {
   console.log("🔑 Authorization header:", authHeader ? "Present" : "Missing");
   try {
     const body = await c.req.json();
-    const { ehsScore, oppScore, updateText } = body;
+    const { ehsScore, oppScore, updateText, qtr, timeInqtr } = body;
+    console.log("📊 Received game data:", { ehsScore, oppScore, qtr, timeInqtr });
     console.log("📊 Request body:", { ehsScore, oppScore, updateText: updateText || "(none)" });
     const user = c.get("user");
     console.log("👤 User from context:", user ? `${user.email} (${user.role})` : "Not found");
@@ -4147,8 +4148,8 @@ app.patch("/api/games/:id", async (c) => {
       return c.json({ error: `Game with ID ${id} not found` }, 404);
     }
     const statements = [
-      // Update game scores
-      c.env.DB.prepare("UPDATE games2025 SET ehsScore = ?, oppScore = ? WHERE id = ?").bind(ehsScore, oppScore, id)
+      // Update game scores and quarter/time information
+      c.env.DB.prepare("UPDATE games2025 SET ehsScore = ?, oppScore = ?, qtr = ?, timeInqtr = ? WHERE id = ?").bind(ehsScore, oppScore, qtr || null, timeInqtr || null, id)
     ];
     if (updateText && userEmail) {
       statements.push(
