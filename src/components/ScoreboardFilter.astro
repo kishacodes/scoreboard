@@ -126,6 +126,25 @@
     .replace(/\"/g, '&quot;')
     .replace(/'/g, '&#39;');
 
+  // Parse DB datetime strings like "YYYY-MM-DD HH:MM" or "YYYY-MM-DD HH:MM:SS" as UTC
+  const parseDbDate = (dateStr: string): Date => {
+    if (!dateStr) return new Date(NaN);
+    const simple = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}(?::\d{2})?$/;
+    if (simple.test(dateStr)) {
+      const normalized = dateStr.replace(' ', 'T');
+      const iso = dateStr.length === 16 ? `${normalized}:00Z` : `${normalized}Z`;
+      return new Date(iso);
+    }
+    return new Date(dateStr);
+  };
+
+  // Format a DB timestamp string in Central Time (America/Chicago)
+  const formatCentralTime = (dateStr: string): string => {
+    const d = parseDbDate(dateStr);
+    if (isNaN(d.getTime())) return String(dateStr || '');
+    return d.toLocaleString('en-US', { timeZone: 'America/Chicago' });
+  };
+
   const attachLazyUpdateListeners = (root: Element) => {
     root.querySelectorAll('.game-card[data-game-id]').forEach((cardEl) => {
       const card = cardEl as HTMLElement;
@@ -149,7 +168,7 @@
             list.innerHTML = '<li class="update-item"><div class="update-row"><span class="update-text">No updates yet</span><span class="update-timestamp"></span></div></li>';
           } else {
             list.innerHTML = updates.map((u: any) =>
-              `<li class=\"update-item\"><div class=\"update-row\"><span class=\"update-text\" title=\"${escapeHtml(u.update_text)}\">${escapeHtml(u.update_text)}</span><span class=\"update-timestamp\">${escapeHtml(u.created_at)}</span></div></li>`
+              `<li class=\"update-item\"><div class=\"update-row\"><span class=\"update-text\" title=\"${escapeHtml(u.update_text)}\">${escapeHtml(u.update_text)}</span><span class=\"update-timestamp\">${escapeHtml(formatCentralTime(u.created_at))}</span></div></li>`
             ).join('');
           }
           details.setAttribute('data-loaded', 'true');
