@@ -7,7 +7,9 @@
     "build": "astro build",
     "preview": "wrangler pages dev ./dist",
     "dev:remote": "wrangler pages dev --proxy 4321 --d1=DB -- npm run dev",
-    "deploy": "astro build && wrangler pages deploy ./dist"
+    "deploy": "astro build && wrangler pages deploy ./dist",
+    "log:summary": "node scripts/log-summary.mjs docs/last-summary.md",
+    "log:summary:stdin": "node scripts/log-summary.mjs --stdin"
   },
   "dependencies": {
     "@astrojs/cloudflare": "^11.0.1",
