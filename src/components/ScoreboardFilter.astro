@@ -164,8 +164,8 @@
     });
   };
 
-  // Check if this is the admin page by looking for a data-admin attribute on the scoreboard container
-  const isAdmin = document.body.dataset.page === 'admin';
+  // Detect admin page: look for any element with data-page="admin"
+  const isAdmin = document.querySelector('[data-page="admin"]') !== null;
 
   const createGameCardHTML = (game: Game): string => {
     if (isAdmin) {
@@ -178,15 +178,36 @@
           <div class="game-body">
             <div class="team">
               <span class="team-name">${game.ehs}</span>
-              <input type="number" class="team-score-input" value="${game.ehsFinal}" />
+              <input type="number" class="team-score-input" value="${game.ehsScore !== undefined ? game.ehsScore : game.ehsFinal}" />
             </div>
             <div class="team">
               <span class="team-name">${game.opp}</span>
-              <input type="number" class="team-score-input" value="${game.oppFinal}" />
+              <input type="number" class="team-score-input" value="${game.oppScore !== undefined ? game.oppScore : game.oppFinal}" />
+            </div>
+            <div class="game-over-container">
+              <label class="game-over-label">
+                <input type="checkbox" class="game-over-checkbox" value="1" ${game.final === 1 ? 'checked' : ''} />
+                Game Over?
+              </label>
+              ${game.final === 1 ? '<span class="game-final">FINAL</span>' : ''}
             </div>
           </div>
-          <div class="game-footer">
-            <button class="update-button">Update Score</button>
+          <div class="game-update-section">
+            <div class="update-input-group">
+              <div class="game-meta-inputs">
+                <select class="quarter-select" aria-label="Quarter">
+                  <option value="">-- Quarter --</option>
+                  <option value="1st quarter">1st Quarter</option>
+                  <option value="2nd quarter">2nd Quarter</option>
+                  <option value="3rd quarter">3rd Quarter</option>
+                  <option value="4th quarter">4th Quarter</option>
+                </select>
+                <input type="text" class="time-input" placeholder="Time (e.g. 4:30)" aria-label="Time in quarter" />
+              </div>
+              <input type="text" class="update-text-input" placeholder="Add update note (optional)" data-game-id="${game.id}" />
+              <button class="update-button">Update Score</button>
+            </div>
+            <div class="update-history" id="update-history-${game.id}"></div>
           </div>
         </div>
       `;
@@ -249,6 +270,20 @@
       return;
     }
 
+    // Helpers from AdminScoreboardDisplay to handle auth
+    const handleAuthError = (message) => {
+      document.cookie = 'auth=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+      localStorage.removeItem('authToken');
+      window.location.href = `/login?returnTo=${encodeURIComponent(window.location.pathname)}`;
+    };
+
+    const getAuthToken = () => {
+      const cookies = document.cookie.split('; ');
+      const authCookie = cookies.find((c) => c.startsWith('auth='));
+      if (authCookie) return decodeURIComponent(authCookie.split('=')[1]);
+      return localStorage.getItem('authToken');
+    };
+
     async function fetchAndRenderGames() {
       const formData = new FormData(form);
       const params = new URLSearchParams();
@@ -268,35 +303,89 @@
         const gamesHTML = games.map(createGameCardHTML).join('');
         scoreboardContainer.innerHTML = `<div class="scoreboard-grid">${gamesHTML}</div>`;
         attachLazyUpdateListeners(scoreboardContainer);
-        // Attach update button event handler for admin filtered results
+        // Attach admin update handler for filtered results
         if (isAdmin) {
           scoreboardContainer.querySelectorAll('.update-button').forEach((btn) => {
             btn.addEventListener('click', async (event) => {
               const target = event.target as HTMLElement;
               const card = target.closest('.game-card') as HTMLElement;
-              const gameId = card.dataset.gameId;
+              if (!card) return;
+              const gameId = card.dataset.gameId as string;
               const scoreInputs = card.querySelectorAll('.team-score-input') as NodeListOf<HTMLInputElement>;
-              const ehsFinal = scoreInputs[0].value;
-              const oppFinal = scoreInputs[1].value;
+              const updateInput = card.querySelector('.update-text-input') as HTMLInputElement | null;
+              const qtrSelectEl = card.querySelector('.quarter-select');
+              const qtrSelect = qtrSelectEl instanceof HTMLSelectElement ? qtrSelectEl : null;
+              const timeInputEl = card.querySelector('.time-input');
+              const timeInput = timeInputEl instanceof HTMLInputElement ? timeInputEl : null;
+              const gameOverCheckbox = card.querySelector('.game-over-checkbox') as HTMLInputElement | null;
+
+              const updateText = updateInput?.value.trim() || '';
+              const qtr = qtrSelect?.value || '';
+              const timeInqtr = timeInput?.value.trim() || '';
+              const isFinal = !!(gameOverCheckbox?.checked);
+
+              const ehsScore = scoreInputs[0]?.value ?? '0';
+              const oppScore = scoreInputs[1]?.value ?? '0';
+
+              const token = getAuthToken();
+              if (!token) {
+                handleAuthError('No authentication token found');
+                return;
+              }
+
+              const buttonText = target.textContent;
               target.textContent = 'Updating...';
               target.setAttribute('disabled', 'true');
+
               try {
+                const body: any = {
+                  ehsScore: parseInt(ehsScore, 10),
+                  oppScore: parseInt(oppScore, 10),
+                  updateText,
+                  qtr,
+                  timeInqtr
+                };
+                if (isFinal) {
+                  body.final = 1;
+                  body.ehsFinal = parseInt(ehsScore, 10);
+                  body.oppFinal = parseInt(oppScore, 10);
+                }
+
                 const response = await fetch(`/api/games/${gameId}`, {
                   method: 'PATCH',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ ehsFinal: parseInt(ehsFinal, 10), oppFinal: parseInt(oppFinal, 10) }),
+                  credentials: 'include',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token.trim()}`
+                  },
+                  body: JSON.stringify(body)
                 });
-                if (!response.ok) throw new Error('Failed to update score');
+
+                let result: any = {};
+                try { result = await response.json(); } catch {}
+
+                if (!response.ok) {
+                  if (response.status === 401) {
+                    target.textContent = 'Auth Error';
+                    target.style.backgroundColor = '#d9534f';
+                    setTimeout(() => handleAuthError('Session expired'), 500);
+                    return;
+                  }
+                  throw new Error(result?.error || 'Failed to update score');
+                }
+
+                if (updateInput) updateInput.value = '';
                 target.textContent = 'Updated!';
                 setTimeout(() => {
-                  target.textContent = 'Update Score';
+                  target.textContent = buttonText || 'Update Score';
                   target.removeAttribute('disabled');
+                  target.style.backgroundColor = '';
                 }, 2000);
-              } catch (error) {
+              } catch (err) {
                 target.textContent = 'Error!';
                 target.style.backgroundColor = '#d9534f';
                 setTimeout(() => {
-                  target.textContent = 'Update Score';
+                  target.textContent = buttonText || 'Update Score';
                   target.removeAttribute('disabled');
                   target.style.backgroundColor = '';
                 }, 3000);

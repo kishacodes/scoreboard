@@ -241,6 +241,25 @@ const toTitleCase = (str: string) => {
     updates?: GameUpdate[];
   }
 
+  // Parse DB datetime strings like "YYYY-MM-DD HH:MM" or "YYYY-MM-DD HH:MM:SS" as UTC
+  function parseDbDate(dateStr: string): Date {
+    if (!dateStr) return new Date(NaN);
+    const simple = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}(?::\d{2})?$/;
+    if (simple.test(dateStr)) {
+      const normalized = dateStr.replace(' ', 'T');
+      const iso = dateStr.length === 16 ? `${normalized}:00Z` : `${normalized}Z`;
+      return new Date(iso);
+    }
+    return new Date(dateStr);
+  }
+
+  // Format a DB timestamp string in Central Time (America/Chicago)
+  function formatCentralTime(dateStr: string): string {
+    const d = parseDbDate(dateStr);
+    if (isNaN(d.getTime())) return dateStr || '';
+    return d.toLocaleString('en-US', { timeZone: 'America/Chicago' });
+  }
+
   // Function to render updates in the UI
   function renderUpdates(card: HTMLElement, updates: any[]) {
     const gameId = card.dataset.gameId;
@@ -262,7 +281,7 @@ const toTitleCase = (str: string) => {
         </div>
         <div class="update-row">
           <span class="update-text">${update.update_text}</span>
-          <span class="update-timestamp">${new Date(update.created_at).toLocaleString()}</span>
+          <span class="update-timestamp">${formatCentralTime(update.created_at)}</span>
         </div>
       </div>
     `).join('');

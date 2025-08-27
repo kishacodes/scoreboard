@@ -1,4 +1,4 @@
-import"./ScoreboardFilter.astro_astro_type_script_index_0_lang.2NovryYb.js";function y(r,e){if(!r.dataset.gameId)return;const n=r.querySelector(".update-history");if(n){if(!e||e.length===0){n.style.display="none";return}n.style.display="block",n.innerHTML=e.map(c=>`
+import"./ScoreboardFilter.astro_astro_type_script_index_0_lang.B-y9ewqw.js";function y(r,e){if(!r.dataset.gameId)return;const n=r.querySelector(".update-history");if(n){if(!e||e.length===0){n.style.display="none";return}n.style.display="block",n.innerHTML=e.map(c=>`
       <div class="update-item">
         <div class="update-meta">
           <span class="update-user">${(c.user_email||"").split("@")[0]}</span>
