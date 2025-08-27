@@ -1,8 +1,8 @@
 globalThis.process ??= {}; globalThis.process.env ??= {};
 import { c as createComponent, a as createAstro, d as renderComponent, r as renderTemplate, m as maybeRenderHead } from '../chunks/astro/server_DDu7V7oX.mjs';
-import { $ as $$Layout } from '../chunks/Layout_7kCDfOwS.mjs';
+import { $ as $$Layout } from '../chunks/Layout_CChju5Ux.mjs';
 import { $ as $$ScoreboardFilter } from '../chunks/ScoreboardFilter_DsKbEPm3.mjs';
-import { $ as $$ScoreboardDisplay } from '../chunks/ScoreboardDisplay_BXqyZZa0.mjs';
+import { $ as $$ScoreboardDisplay } from '../chunks/ScoreboardDisplay_gBlpKa2j.mjs';
 /* empty css                                 */
 export { renderers } from '../renderers.mjs';
 

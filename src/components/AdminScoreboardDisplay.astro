@@ -259,9 +259,11 @@ const toTitleCase = (str: string) => {
       <div class="update-item">
         <div class="update-meta">
           <span class="update-user">${(update.user_email || '').split('@')[0]}</span>
-          <span class="update-time">${new Date(update.created_at).toLocaleString()}</span>
         </div>
-        <div class="update-text">${update.update_text}</div>
+        <div class="update-row">
+          <span class="update-text">${update.update_text}</span>
+          <span class="update-timestamp">${new Date(update.created_at).toLocaleString()}</span>
+        </div>
       </div>
     `).join('');
   }
@@ -272,8 +274,7 @@ const toTitleCase = (str: string) => {
       const response = await fetch(`/api/games/${gameId}/updates`);
       if (!response.ok) throw new Error('Failed to load updates');
       
-      const result = await response.json() as ApiResponse<GameUpdate[]>;
-      const updates = result.results || [];
+      const updates = await response.json() as GameUpdate[];
       const card = document.querySelector(`.game-card[data-game-id="${gameId}"]`) as HTMLElement;
       
       if (card) {

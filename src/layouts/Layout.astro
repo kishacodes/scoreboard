@@ -130,4 +130,25 @@ const { title } = Astro.props;
     color: var(--navy-blue);
     margin: 0;
   }
+
+  /* Global update list styles */
+  .update-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+  }
+  .update-text {
+    color: #333;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1;
+  }
+  .update-timestamp {
+    font-size: 0.8rem;
+    color: #888;
+    white-space: nowrap;
+    margin-left: 0.75rem;
+  }
 </style>
