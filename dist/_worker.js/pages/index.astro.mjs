@@ -2,7 +2,7 @@ globalThis.process ??= {}; globalThis.process.env ??= {};
 import { c as createComponent, a as createAstro, d as renderComponent, r as renderTemplate, m as maybeRenderHead } from '../chunks/astro/server_DDu7V7oX.mjs';
 import { $ as $$Layout } from '../chunks/Layout_7kCDfOwS.mjs';
 import { $ as $$ScoreboardFilter } from '../chunks/ScoreboardFilter_DsKbEPm3.mjs';
-import { $ as $$ScoreboardDisplay } from '../chunks/ScoreboardDisplay_Ba9xwvpx.mjs';
+import { $ as $$ScoreboardDisplay } from '../chunks/ScoreboardDisplay_BXqyZZa0.mjs';
 /* empty css                                 */
 export { renderers } from '../renderers.mjs';
 
@@ -15,20 +15,11 @@ const $$Index = createComponent(async ($$result, $$props, $$slots) => {
     const gamesResponse = await fetch(`${Astro2.url.origin}/api/games`);
     if (gamesResponse.ok) {
       games = await gamesResponse.json();
-      for (const game of games) {
-        const updatesResponse = await fetch(`${Astro2.url.origin}/api/games/${game.id}/updates`);
-        if (updatesResponse.ok) {
-          const updates = await updatesResponse.json();
-          game.updates = updates;
-        } else {
-          game.updates = [];
-        }
-      }
     } else {
     }
   } catch (error) {
   }
-  return renderTemplate`${renderComponent($$result, "Layout", $$Layout, { "title": "Emerson Mavericks Football Scoreboard", "data-astro-cid-j7pv25f6": true }, { "default": async ($$result2) => renderTemplate` ${maybeRenderHead()}<main data-astro-cid-j7pv25f6> <header data-astro-cid-j7pv25f6> <h1 data-astro-cid-j7pv25f6>Emerson Mavericks Football</h1> </header> ${renderComponent($$result2, "ScoreboardFilter", $$ScoreboardFilter, { "data-astro-cid-j7pv25f6": true })} <div class="scoreboard-container" data-astro-cid-j7pv25f6> ${renderComponent($$result2, "ScoreboardDisplay", $$ScoreboardDisplay, { "games": games, "data-astro-cid-j7pv25f6": true })} </div> <!-- Debug section removed --> </main> ` })}  `;
+  return renderTemplate`${renderComponent($$result, "Layout", $$Layout, { "title": "Emerson Mavericks Football Scoreboard", "data-astro-cid-j7pv25f6": true }, { "default": async ($$result2) => renderTemplate` ${maybeRenderHead()}<main data-astro-cid-j7pv25f6> <header data-astro-cid-j7pv25f6> <h1 data-astro-cid-j7pv25f6>Emerson Mavericks Football</h1> </header> ${renderComponent($$result2, "ScoreboardFilter", $$ScoreboardFilter, { "data-astro-cid-j7pv25f6": true })} <div class="scoreboard-container" data-astro-cid-j7pv25f6> ${renderComponent($$result2, "ScoreboardDisplay", $$ScoreboardDisplay, { "games": games, "data-astro-cid-j7pv25f6": true })} </div> <!-- Debug section removed --> </main> ` })} `;
 }, "/Users/kisha/serverless/scoreboard/src/pages/index.astro", void 0);
 
 const $$file = "/Users/kisha/serverless/scoreboard/src/pages/index.astro";

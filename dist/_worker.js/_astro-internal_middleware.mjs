@@ -4102,7 +4102,6 @@ app.use("*", async (c, next) => {
 });
 app.patch("/api/games/:id", async (c) => {
   const id = c.req.param("id");
-  c.req.header("Authorization");
   try {
     const body = await c.req.json();
     const { ehsScore, oppScore, updateText, qtr, timeInqtr, final, ehsFinal, oppFinal } = body;

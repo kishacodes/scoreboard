@@ -10,17 +10,6 @@ try {
   const gamesResponse = await fetch(`${Astro.url.origin}/api/games`);
   if (gamesResponse.ok) {
     games = await gamesResponse.json();
-    
-    // Fetch updates for each game
-    for (const game of games) {
-      const updatesResponse = await fetch(`${Astro.url.origin}/api/games/${game.id}/updates`);
-      if (updatesResponse.ok) {
-        const updates = await updatesResponse.json();
-        game.updates = updates;
-      } else {
-        game.updates = [];
-      }
-    }
   } else {
     // Failed to fetch games
   }
@@ -45,27 +34,6 @@ try {
 
   </main>
 </Layout>
-<style>
-  main {
-    max-width: 1200px;
-    margin: auto;
-    padding: 1.5rem;
-  }
-  header {
-    background-color: var(--navy-blue);
-    color: white;
-    padding: 2rem 1.5rem;
-    text-align: center;
-    border-radius: 0 0 8px 8px;
-  }
-  h1 {
-    margin: 0;
-    font-size: 2.5rem;
-  }
-  .scoreboard-container {
-    margin-top: 2rem;
-  }
-</style>
 
 <style>
   main {

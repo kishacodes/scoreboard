@@ -57,6 +57,8 @@ app.get('/api/games', async (c) => {
   try {
     // In middleware, we get the env from Astro.locals.runtime.env
     const { results } = await c.env.DB.prepare(query).bind(...bindings).all();
+    // Add CDN caching headers (short-lived)
+    c.header('Cache-Control', 'public, max-age=30, s-maxage=120, stale-while-revalidate=60');
     return c.json(results);
   } catch (e) {
     // DB fetch error
@@ -177,7 +179,8 @@ const publicRoutes = [
 
 // Define exact public routes
 const exactPublicRoutes = [
-  '/api/games' // The main games listing is public
+  '/api/games', // The main games listing is public
+  '/api/games/updates' // Batch updates endpoint is public
 ];
 
 // Define public route patterns (using regex patterns)
@@ -380,10 +383,58 @@ app.get('/api/games/:id/updates', async (c) => {
       WHERE game_id = ? 
       ORDER BY created_at DESC
     `).bind(id).all();
-    
+    // Add CDN caching headers for updates (short-lived)
+    c.header('Cache-Control', 'public, max-age=15, s-maxage=60, stale-while-revalidate=60');
     return c.json(results || []);
   } catch (e) {
     return c.json({ error: 'Failed to fetch updates' }, 500);
+  }
+});
+
+// Get updates for multiple games (batched) - public endpoint
+app.get('/api/games/updates', async (c) => {
+  const { ids = '', limit } = c.req.query();
+  const rawIds = String(ids)
+    .split(',')
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+
+  const gameIds = rawIds
+    .map((s) => Number(s))
+    .filter((n) => Number.isFinite(n));
+
+  // Nothing to fetch, return empty map
+  if (gameIds.length === 0) {
+    c.header('Cache-Control', 'public, max-age=15, s-maxage=60, stale-while-revalidate=60');
+    return c.json({});
+  }
+
+  // Limit per game (1..50), default 5
+  const perGame = Math.max(1, Math.min(50, Number(limit) || 5));
+
+  const placeholders = gameIds.map(() => '?').join(',');
+  const sql = `
+    SELECT id, game_id, user_email, update_text,
+           strftime('%Y-%m-%d %H:%M', created_at) as created_at
+    FROM game_updates
+    WHERE game_id IN (${placeholders})
+    ORDER BY game_id ASC, created_at DESC
+  `;
+
+  try {
+    const { results } = await c.env.DB.prepare(sql).bind(...gameIds).all();
+    const map: Record<string, any[]> = {};
+    for (const gid of gameIds) map[String(gid)] = [];
+    for (const row of (results as any[]) || []) {
+      const gid = String(row.game_id);
+      if (map[gid].length < perGame) {
+        map[gid].push(row);
+      }
+    }
+    c.header('Cache-Control', 'public, max-age=15, s-maxage=60, stale-while-revalidate=60');
+    return c.json(map);
+  } catch (e) {
+    return c.json({ error: 'Failed to fetch batch updates' }, 500);
   }
 });
 
@@ -393,7 +444,7 @@ app.all('/api/*', async (c) => {
     error: 'Route not found',
     method: c.req.method,
     path: c.req.path,
-    availableRoutes: ['/api/login', '/api/games/:id', '/api/games/:id/updates']
+    availableRoutes: ['/api/login', '/api/games', '/api/games/updates', '/api/games/:id', '/api/games/:id/updates']
   }, 404);
 });
 

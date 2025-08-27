@@ -118,6 +118,52 @@
     return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
   }
 
+  // Helpers to lazy-load updates for dynamically rendered cards
+  const escapeHtml = (str: string): string => String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/\"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+
+  const attachLazyUpdateListeners = (root: Element) => {
+    root.querySelectorAll('.game-card[data-game-id]').forEach((cardEl) => {
+      const card = cardEl as HTMLElement;
+      const gameId = card.getAttribute('data-game-id');
+      const details = card.querySelector('.updates-details') as HTMLDetailsElement | null;
+      if (!details || !gameId) return;
+      const list = card.querySelector('.updates-list') as HTMLElement | null;
+      const summary = card.querySelector('.updates-heading') as HTMLElement | null;
+
+      details.addEventListener('toggle', async () => {
+        if (!details.open) return;
+        if (details.getAttribute('data-loaded') === 'true') return;
+        try {
+          const res = await fetch(`/api/games/${gameId}/updates`);
+          const updates: any[] = res.ok ? await res.json() : [];
+          if (summary) {
+            summary.textContent = updates.length > 0 ? `Recent Updates (${updates.length})` : 'Recent Updates (0)';
+          }
+          if (!list) return;
+          if (!updates || updates.length === 0) {
+            list.innerHTML = '<li class="update-item"><div class="update-row"><span class="update-text">No updates yet</span><span class="update-timestamp"></span></div></li>';
+          } else {
+            list.innerHTML = updates.map((u: any) =>
+              `<li class=\"update-item\"><div class=\"update-row\"><span class=\"update-text\" title=\"${escapeHtml(u.update_text)}\">${escapeHtml(u.update_text)}</span><span class=\"update-timestamp\">${escapeHtml(u.created_at)}</span></div></li>`
+            ).join('');
+          }
+          details.setAttribute('data-loaded', 'true');
+        } catch (_) {
+          if (summary) summary.textContent = 'Recent Updates (0)';
+          if (list) {
+            list.innerHTML = '<li class="update-item"><div class="update-row"><span class="update-text">No updates yet</span><span class="update-timestamp"></span></div></li>';
+          }
+          details.setAttribute('data-loaded', 'true');
+        }
+      });
+    });
+  };
+
   // Check if this is the admin page by looking for a data-admin attribute on the scoreboard container
   const isAdmin = document.body.dataset.page === 'admin';
 
@@ -163,27 +209,8 @@
         `;
       }
       
-      // Prepare updates section if available
-      const updatesHTML = game.updates && game.updates.length > 0 ? `
-        <div class="game-updates">
-          <details class="updates-details">
-            <summary class="updates-heading">Recent Updates (${game.updates.length})</summary>
-            <ul class="updates-list">
-              ${game.updates.map(update => `
-                <li class="update-item">
-                  <div class="update-row">
-                    <span class="update-text" title="${update.update_text}">${update.update_text}</span>
-                    <span class="update-timestamp">${update.created_at}</span>
-                  </div>
-                </li>
-              `).join('')}
-            </ul>
-          </details>
-        </div>
-      ` : '';
-      
       return `
-        <div class="game-card">
+        <div class="game-card" data-game-id="${game.id}">
           <div class="game-header">
             <span class="game-date">${formatDate(game.gameDate)}</span>
             <span class="game-level">${toTitleCase(game.teams)}</span>
@@ -201,7 +228,12 @@
           </div>
           <div class="game-footer">
             ${game.comments ? `<p class="game-comment">${game.comments}</p>` : ''}
-            ${updatesHTML}
+            <div class="game-updates">
+              <details class="updates-details" data-loaded="false">
+                <summary class="updates-heading">Recent Updates</summary>
+                <ul class="updates-list" aria-live="polite"></ul>
+              </details>
+            </div>
           </div>
         </div>
       `;
@@ -211,7 +243,7 @@
 
   document.addEventListener('DOMContentLoaded', () => {
     const form = document.getElementById('filter-form') as HTMLFormElement;
-    const scoreboardContainer = document.querySelector('.scoreboard-container');
+    const scoreboardContainer = document.querySelector('.scoreboard-container') as HTMLElement | null;
 
     if (!form || !scoreboardContainer) {
       return;
@@ -231,26 +263,11 @@
 
       const response = await fetch(`/api/games?${params.toString()}`);
       const games: Game[] = await response.json();
-      
-      // Fetch updates for each game if they're not already included
-      for (const game of games) {
-        if (!game.updates) {
-          try {
-            const updatesResponse = await fetch(`/api/games/${game.id}/updates`);
-            if (updatesResponse.ok) {
-              game.updates = await updatesResponse.json();
-            } else {
-              game.updates = [];
-            }
-          } catch (error) {
-            game.updates = [];
-          }
-        }
-      }
 
-      if (games && games.length > 0) {
+      if (games && games.length > 0 && scoreboardContainer) {
         const gamesHTML = games.map(createGameCardHTML).join('');
         scoreboardContainer.innerHTML = `<div class="scoreboard-grid">${gamesHTML}</div>`;
+        attachLazyUpdateListeners(scoreboardContainer);
         // Attach update button event handler for admin filtered results
         if (isAdmin) {
           scoreboardContainer.querySelectorAll('.update-button').forEach((btn) => {
