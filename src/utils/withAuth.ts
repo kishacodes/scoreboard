@@ -14,31 +14,28 @@ export function withAuth(handler: APIRoute, options: { role?: string } = {}) {
     
     if (authHeader && authHeader.startsWith('Bearer ')) {
       token = authHeader.split(' ')[1];
-      console.log('🔑 withAuth - Token found in Authorization header');
+      // debug log removed
     } else {
       // Then check cookies
       token = cookies.get('auth')?.value || '';
-      console.log('🔑 withAuth - Token found in cookies:', token ? 'Yes' : 'No');
+      // debug log removed
     }
     
     if (!token) {
-      console.log('❌ withAuth - No token found');
+      // debug log removed
       return redirect('/login');
     }
     
     try {
       const { payload } = await jwtVerify(token, JWT_SECRET);
-      console.log('✅ withAuth - Token verified successfully');
       
       if (options.role && payload.role !== options.role) {
-        console.log('❌ withAuth - Role mismatch: required', options.role, 'but got', payload.role);
         return new Response('Forbidden', { status: 403 });
       }
       
       context.locals.user = payload;
       return handler(context, ...args);
     } catch (e) {
-      console.error('❌ withAuth - Token verification failed:', e);
       return redirect('/login');
     }
   };

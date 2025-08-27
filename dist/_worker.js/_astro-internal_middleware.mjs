@@ -3960,7 +3960,6 @@ app.get("/api/games", async (c) => {
     const { results } = await c.env.DB.prepare(query).bind(...bindings).all();
     return c.json(results);
   } catch (e) {
-    console.error("D1 Error:", e.message);
     return c.json({ error: "Failed to fetch games" }, 500);
   }
 });
@@ -3976,7 +3975,6 @@ app.post("/api/login", async (c) => {
   try {
     const { results } = await c.env.DB.prepare("SELECT * FROM users WHERE email = ?").bind(email).all();
     const user = results && results[0];
-    console.log("DEBUG user:", user);
     if (!user) {
       return c.json({ error: "Invalid email or password." }, 401);
     }
@@ -4002,7 +4000,6 @@ app.post("/api/login", async (c) => {
       // Include the token in the response for client-side storage
     });
   } catch (e) {
-    console.error("Login error:", e.message);
     return c.json({ error: "Login failed." }, 500);
   }
 });
@@ -4052,36 +4049,25 @@ const publicRoutePatterns = [
 ];
 app.use("*", async (c, next) => {
   const path = c.req.path;
-  console.log("🚦 Auth middleware checking path:", path);
   if (exactPublicRoutes.includes(path)) {
-    console.log("✅ Exact public route match, skipping auth for:", path);
     return next();
   }
   if (publicRoutePatterns.some((pattern) => pattern.test(path))) {
-    console.log("✅ Pattern match, skipping auth for:", path);
     return next();
   }
   if (publicRoutes.some((route) => path.startsWith(route))) {
-    console.log("✅ Public route prefix match, skipping auth for:", path);
     return next();
   }
-  console.log("🔐 Server Auth Check - Path:", path);
   let token = "";
   const authHeader = c.req.header("Authorization");
   if (authHeader && authHeader.startsWith("Bearer ")) {
     token = authHeader.split(" ")[1];
-    console.log("🔑 Server - Token found in Authorization header:", token.substring(0, 20) + "...");
   } else if (c.req.raw.headers.has("cookie")) {
     const cookies = c.req.raw.headers.get("cookie") || "";
-    console.log("🍪 Server - Cookies received:", cookies.substring(0, 100) + "...");
     const match = cookies.match(/auth=([^;]+)/);
     token = match ? match[1] : "";
-    if (token) {
-      console.log("🔑 Server - Token found in cookies:", token.substring(0, 20) + "...");
-    }
   }
   if (!token) {
-    console.error("❌ Server - No token found in request");
     if (path.startsWith("/api/")) {
       return c.json({ error: "Unauthorized" }, 401);
     }
@@ -4089,7 +4075,6 @@ app.use("*", async (c, next) => {
   }
   try {
     const { payload } = await jwtVerify(token, JWT_SECRET);
-    console.log("🔍 Server - JWT payload:", payload);
     const user = {
       userid: payload.userid,
       email: payload.email,
@@ -4097,11 +4082,7 @@ app.use("*", async (c, next) => {
       ...payload
     };
     c.set("user", user);
-    console.log("✅ Server - Token verified successfully for user:", user.email);
   } catch (e) {
-    console.error("❌ Server - Token verification failed:", e);
-    console.error("❌ Server - Failed token was:", token.substring(0, 50) + "...");
-    console.error("❌ Server - JWT_SECRET length:", JWT_SECRET.byteLength);
     if (path.startsWith("/api/")) {
       return c.json({
         error: "Invalid or expired token",
@@ -4116,66 +4097,41 @@ app.use("*", async (c, next) => {
   try {
     await c.env.DB.prepare(CREATE_UPDATES_TABLE).run();
   } catch (e) {
-    console.error("Error creating updates table:", e);
   }
   await next();
 });
 app.patch("/api/games/:id", async (c) => {
-  console.log("🔧 PATCH endpoint hit for /api/games/:id");
   const id = c.req.param("id");
-  console.log("🔢 Game ID from path param:", id);
-  const authHeader = c.req.header("Authorization");
-  console.log("🔑 Authorization header:", authHeader ? "Present" : "Missing");
+  c.req.header("Authorization");
   try {
     const body = await c.req.json();
-    console.log("📊 Full request body:", body);
     const { ehsScore, oppScore, updateText, qtr, timeInqtr, final, ehsFinal, oppFinal } = body;
-    console.log("📊 Received game data:", { ehsScore, oppScore, qtr, timeInqtr, final: final || 0 });
-    console.log("📊 Request body processed values:", {
-      ehsScore: typeof ehsScore,
-      oppScore: typeof oppScore,
-      updateText: updateText || "(none)",
-      final: final === 1 ? "YES - FINAL" : "no",
-      ehsFinal: ehsFinal || "using ehsScore",
-      oppFinal: oppFinal || "using oppScore"
-    });
     const user = c.get("user");
-    console.log("👤 User from context:", user ? `${user.email} (${user.role})` : "Not found");
     if (!user) {
-      console.error("❌ User not authenticated - returning 401");
       return c.json({ error: "Unauthorized", detail: "No user in context" }, 401);
     }
     const userEmail = user.email;
-    console.log("✉️ User email for update:", userEmail);
     if (!id) {
-      console.error("❌ Missing game ID");
       return c.json({ error: "Missing game ID" }, 400);
     }
     if (ehsScore === void 0 || oppScore === void 0) {
-      console.error("❌ Missing score values:", { ehsScore, oppScore });
       return c.json({ error: "Missing required score fields" }, 400);
     }
-    console.log("🔄 Preparing database statements for update");
     const gameCheck = await c.env.DB.prepare(
       "SELECT id FROM games2025 WHERE id = ?"
     ).bind(id).first();
     if (!gameCheck) {
-      console.error(`❌ Game with ID ${id} not found`);
       return c.json({ error: `Game with ID ${id} not found` }, 404);
     }
     let updateStatement;
     const params = [];
-    console.log("🔗 DB connection check:", c.env.DB ? "Available" : "NOT AVAILABLE");
     const isFinal = final === 1 || final === "1";
-    console.log("👀 Final check - raw value:", final, "interpreted as:", isFinal ? "FINAL" : "not final");
     if (isFinal) {
       updateStatement = "UPDATE games2025 SET ehsScore = ?, oppScore = ?, qtr = ?, timeInqtr = ?, final = ?, ehsFinal = ?, oppFinal = ? WHERE id = ?";
       params.push(ehsScore, oppScore, qtr || null, timeInqtr || null, 1, ehsFinal || ehsScore, oppFinal || oppScore, id);
-      console.log("🏁 Marking game as FINAL with params:", JSON.stringify(params));
     } else {
       updateStatement = "UPDATE games2025 SET ehsScore = ?, oppScore = ?, qtr = ?, timeInqtr = ? WHERE id = ?";
       params.push(ehsScore, oppScore, qtr || null, timeInqtr || null, id);
-      console.log("📊 Regular update with params:", JSON.stringify(params));
     }
     const statements = [
       // Update game information with the appropriate statement
@@ -4189,22 +4145,18 @@ app.patch("/api/games/:id", async (c) => {
         ).bind(id, userEmail, updateText)
       );
     }
-    console.log("⚙️ Executing database batch update");
     await c.env.DB.batch(statements);
-    console.log("✅ Database update successful");
     const updatesResult = await c.env.DB.prepare(
       `SELECT * FROM game_updates 
        WHERE game_id = ? 
        ORDER BY created_at DESC`
     ).bind(id).all();
-    console.log("📤 Returning success response with updates");
     return c.json({
       success: true,
       message: `Game ${id} updated${updateText ? " with note" : ""}.`,
       updates: updatesResult.results || []
     });
   } catch (e) {
-    console.error("❌ Update Error:", e);
     return c.json({
       error: "Failed to update game",
       details: e instanceof Error ? e.message : "Unknown error"
@@ -4223,12 +4175,10 @@ app.get("/api/games/:id/updates", async (c) => {
     `).bind(id).all();
     return c.json(results || []);
   } catch (e) {
-    console.error("Fetch Updates Error:", e.message);
     return c.json({ error: "Failed to fetch updates" }, 500);
   }
 });
 app.all("/api/*", async (c) => {
-  console.log("🔍 Unmatched API route:", c.req.method, c.req.path);
   return c.json({
     error: "Route not found",
     method: c.req.method,

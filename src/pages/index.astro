@@ -2,7 +2,6 @@
 import Layout from '../layouts/Layout.astro';
 import ScoreboardFilter from '../components/ScoreboardFilter.astro';
 import ScoreboardDisplay from '../components/ScoreboardDisplay.astro';
-import DebugDisplay from '../components/DebugDisplay.astro';
 
 // This code runs on the server, at build time or on request.
 let games = [];
@@ -15,22 +14,18 @@ try {
     // Fetch updates for each game
     for (const game of games) {
       const updatesResponse = await fetch(`${Astro.url.origin}/api/games/${game.id}/updates`);
-      console.log(`Fetching updates for game ${game.id}: ${updatesResponse.status}`);
-      
       if (updatesResponse.ok) {
         const updates = await updatesResponse.json();
-        console.log(`Game ${game.id} updates:`, updates);
         game.updates = updates;
       } else {
-        console.error(`Updates API Error: ${updatesResponse.status} ${updatesResponse.statusText}`);
         game.updates = [];
       }
     }
   } else {
-    console.error(`API Error: ${gamesResponse.status} ${gamesResponse.statusText}`);
+    // Failed to fetch games
   }
 } catch (error) {
-  console.error('Fetch Error:', (error as Error).message);
+  // Ignore fetch error in production and continue rendering
 }
 ---
 

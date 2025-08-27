@@ -59,7 +59,7 @@ app.get('/api/games', async (c) => {
     const { results } = await c.env.DB.prepare(query).bind(...bindings).all();
     return c.json(results);
   } catch (e) {
-    console.error('D1 Error:', (e as Error).message);
+    // DB fetch error
     return c.json({ error: 'Failed to fetch games' }, 500);
   }
 });
@@ -94,7 +94,6 @@ app.post('/api/login', async (c) => {
   try {
     const { results } = await c.env.DB.prepare("SELECT * FROM users WHERE email = ?").bind(email).all();
     const user = results && results[0];
-    console.log('DEBUG user:', user);
     if (!user) {
       return c.json({ error: 'Invalid email or password.' }, 401);
     }
@@ -125,7 +124,6 @@ app.post('/api/login', async (c) => {
       token // Include the token in the response for client-side storage
     });
   } catch (e) {
-    console.error('Login error:', (e as Error).message);
     return c.json({ error: 'Login failed.' }, 500);
   }
 });
@@ -191,27 +189,27 @@ const publicRoutePatterns = [
 app.use('*', async (c, next) => {
   const path = c.req.path;
   
-  console.log('🚦 Auth middleware checking path:', path);
+  // auth middleware
   
   // Skip auth for exact matches first
   if (exactPublicRoutes.includes(path)) {
-    console.log('✅ Exact public route match, skipping auth for:', path);
+    // public route exact match
     return next();
   }
   
   // Skip auth for regex pattern matches
   if (publicRoutePatterns.some(pattern => pattern.test(path))) {
-    console.log('✅ Pattern match, skipping auth for:', path);
+    // public route pattern match
     return next();
   }
   
   // Skip auth for prefix public routes
   if (publicRoutes.some(route => path.startsWith(route))) {
-    console.log('✅ Public route prefix match, skipping auth for:', path);
+    // public route prefix match
     return next();
   }
   
-  console.log('🔐 Server Auth Check - Path:', path);
+  // protected route
   
   // Check for token in Authorization header or cookie
   let token = '';
@@ -220,22 +218,20 @@ app.use('*', async (c, next) => {
   // Try to get token from Authorization header first
   if (authHeader && authHeader.startsWith('Bearer ')) {
     token = authHeader.split(' ')[1];
-    console.log('🔑 Server - Token found in Authorization header:', token.substring(0, 20) + '...');
   } 
   // Then try to get from cookies
   else if (c.req.raw.headers.has('cookie')) {
     const cookies = c.req.raw.headers.get('cookie') || '';
-    console.log('🍪 Server - Cookies received:', cookies.substring(0, 100) + '...');
     const match = cookies.match(/auth=([^;]+)/);
     token = match ? match[1] : '';
     if (token) {
-      console.log('🔑 Server - Token found in cookies:', token.substring(0, 20) + '...');
+      // token found in cookies
     }
   }
   
   // If no token found, redirect to login for web routes or return 401 for API
   if (!token) {
-    console.error('❌ Server - No token found in request');
+    // No token found in request
     if (path.startsWith('/api/')) {
       return c.json({ error: 'Unauthorized' }, 401);
     }
@@ -244,7 +240,6 @@ app.use('*', async (c, next) => {
   
   try {
     const { payload } = await jwtVerify(token, JWT_SECRET);
-    console.log('🔍 Server - JWT payload:', payload);
     
     // Ensure the payload has the expected shape
     const user = {
@@ -254,11 +249,8 @@ app.use('*', async (c, next) => {
       ...payload
     };
     c.set('user', user);
-    console.log('✅ Server - Token verified successfully for user:', user.email);
   } catch (e) {
-    console.error('❌ Server - Token verification failed:', e);
-    console.error('❌ Server - Failed token was:', token.substring(0, 50) + '...');
-    console.error('❌ Server - JWT_SECRET length:', JWT_SECRET.byteLength);
+    // Token verification failed
     
     if (path.startsWith('/api/')) {
       return c.json({ 
@@ -277,56 +269,38 @@ app.use('*', async (c, next) => {
   try {
     await c.env.DB.prepare(CREATE_UPDATES_TABLE).run();
   } catch (e) {
-    console.error('Error creating updates table:', e);
+    // ignore create table errors
   }
   await next();
 });
 
 app.patch('/api/games/:id', async (c) => {
-  console.log('🔧 PATCH endpoint hit for /api/games/:id');
   const id = c.req.param('id');
-  console.log('🔢 Game ID from path param:', id);
-  const authHeader = c.req.header('Authorization');
-  console.log('🔑 Authorization header:', authHeader ? 'Present' : 'Missing');
   try {
     const body = await c.req.json();
-    console.log('📊 Full request body:', body);
     const { ehsScore, oppScore, updateText, qtr, timeInqtr, final, ehsFinal, oppFinal } = body;
-    console.log('📊 Received game data:', { ehsScore, oppScore, qtr, timeInqtr, final: final || 0 });
-    console.log('📊 Request body processed values:', { 
-      ehsScore: typeof ehsScore, 
-      oppScore: typeof oppScore, 
-      updateText: updateText || '(none)', 
-      final: final === 1 ? 'YES - FINAL' : 'no', 
-      ehsFinal: ehsFinal || 'using ehsScore', 
-      oppFinal: oppFinal || 'using oppScore' 
-    });
+    // request body parsed
     
     // Get user from context (set by auth middleware)
     const user = c.get('user');
-    console.log('👤 User from context:', user ? `${user.email} (${user.role})` : 'Not found');
     
     // Validate user is authenticated
     if (!user) {
-      console.error('❌ User not authenticated - returning 401');
       return c.json({ error: 'Unauthorized', detail: 'No user in context' }, 401);
     }
     
     const userEmail = user.email;
-    console.log('✉️ User email for update:', userEmail);
 
     // Validate required fields
     if (!id) {
-      console.error('❌ Missing game ID');
       return c.json({ error: 'Missing game ID' }, 400);
     }
     
     if (ehsScore === undefined || oppScore === undefined) {
-      console.error('❌ Missing score values:', { ehsScore, oppScore });
       return c.json({ error: 'Missing required score fields' }, 400);
     }
     
-    console.log('🔄 Preparing database statements for update');
+    // preparing database statements
     
     // Check if the game exists first
     const gameCheck = await c.env.DB.prepare(
@@ -334,7 +308,6 @@ app.patch('/api/games/:id', async (c) => {
     ).bind(id).first();
     
     if (!gameCheck) {
-      console.error(`❌ Game with ID ${id} not found`);
       return c.json({ error: `Game with ID ${id} not found` }, 404);
     }
 
@@ -342,23 +315,19 @@ app.patch('/api/games/:id', async (c) => {
     let updateStatement;
     const params = [];
     
-    // Log database connection status
-    console.log('🔗 DB connection check:', c.env.DB ? 'Available' : 'NOT AVAILABLE');
+    // DB connection check
     
     // Check if final is explicitly 1 (could be string '1' or number 1)
     const isFinal = final === 1 || final === '1';
-    console.log('👀 Final check - raw value:', final, 'interpreted as:', isFinal ? 'FINAL' : 'not final');
     
     if (isFinal) {
       // If game is marked as final, update all fields including final status and final scores
       updateStatement = "UPDATE games2025 SET ehsScore = ?, oppScore = ?, qtr = ?, timeInqtr = ?, final = ?, ehsFinal = ?, oppFinal = ? WHERE id = ?";
       params.push(ehsScore, oppScore, qtr || null, timeInqtr || null, 1, ehsFinal || ehsScore, oppFinal || oppScore, id);
-      console.log('🏁 Marking game as FINAL with params:', JSON.stringify(params));
     } else {
       // Regular score update without changing final status
       updateStatement = "UPDATE games2025 SET ehsScore = ?, oppScore = ?, qtr = ?, timeInqtr = ? WHERE id = ?";
       params.push(ehsScore, oppScore, qtr || null, timeInqtr || null, id);
-      console.log('📊 Regular update with params:', JSON.stringify(params));
     }
     
     const statements = [
@@ -376,10 +345,8 @@ app.patch('/api/games/:id', async (c) => {
       );
     }
     
-    console.log('⚙️ Executing database batch update');
     // Execute all statements in a batch
     await c.env.DB.batch(statements);
-    console.log('✅ Database update successful');
 
     // Fetch the latest updates to return
     const updatesResult = await c.env.DB.prepare(
@@ -388,14 +355,12 @@ app.patch('/api/games/:id', async (c) => {
        ORDER BY created_at DESC`
     ).bind(id).all();
     
-    console.log('📤 Returning success response with updates');
     return c.json({ 
       success: true, 
       message: `Game ${id} updated${updateText ? ' with note' : ''}.`,
       updates: updatesResult.results || []
     });
   } catch (e) {
-    console.error('❌ Update Error:', e);
     return c.json({ 
       error: 'Failed to update game',
       details: e instanceof Error ? e.message : 'Unknown error'
@@ -418,14 +383,12 @@ app.get('/api/games/:id/updates', async (c) => {
     
     return c.json(results || []);
   } catch (e) {
-    console.error('Fetch Updates Error:', (e as Error).message);
     return c.json({ error: 'Failed to fetch updates' }, 500);
   }
 });
 
 // Debug route to catch unmatched API requests
 app.all('/api/*', async (c) => {
-  console.log('🔍 Unmatched API route:', c.req.method, c.req.path);
   return c.json({ 
     error: 'Route not found',
     method: c.req.method,

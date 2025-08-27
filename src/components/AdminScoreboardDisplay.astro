@@ -281,19 +281,16 @@ const toTitleCase = (str: string) => {
       }
       
     } catch (error) {
-      console.error('Error loading update history:', error);
+      // Silently ignore update history load errors in production
     }
   }
 
   // Handle score updates
   document.addEventListener('click', async (event) => {
-    console.log('🖱️ Click event detected on:', event.target);
     const target = event.target as HTMLElement;
     if (!target.classList.contains('update-button')) {
-      console.log('❌ Not an update button, ignoring click');
       return;
     }
-    console.log('✅ Update button click confirmed');
 
     const card = target.closest('.game-card') as HTMLElement;
     const gameId = card.dataset.gameId;
@@ -319,7 +316,6 @@ const toTitleCase = (str: string) => {
 
     // Function to handle authentication errors
     const handleAuthError = (message: string) => {
-      console.error('Authentication error:', message);
       // Clear any invalid tokens
       document.cookie = 'auth=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
       localStorage.removeItem('authToken');
@@ -331,56 +327,28 @@ const toTitleCase = (str: string) => {
     const getAuthToken = (): string | null => {
       // Try cookies first
       const cookies = document.cookie.split('; ');
-      console.log('🍪 All cookies:', cookies);
-      
       const authCookie = cookies.find(cookie => cookie.startsWith('auth='));
-      console.log('🔍 Auth cookie found:', authCookie ? 'Yes' : 'No');
-      
       if (authCookie) {
         const token = authCookie.split('=')[1];
-        console.log('🔑 Token from cookies (first 20 chars):', token.substring(0, 20) + '...');
-        return decodeURIComponent(token); // Make sure to decode URI component
+        return decodeURIComponent(token);
       }
-      
       // Fallback to localStorage
       const localToken = localStorage.getItem('authToken');
-      console.log('🔍 localStorage token found:', localToken ? 'Yes' : 'No');
-      
       if (localToken) {
-        console.log('🔑 Token from localStorage (first 20 chars):', localToken.substring(0, 20) + '...');
         return localToken;
       }
-      
       return null;
     };
 
-    console.log('🚀 Step 1 - Update Score button clicked for game:', gameId);
-    console.log('📊 Step 3 - Score values extracted - EHS:', ehsScore, 'OPP:', oppScore);
-    console.log('📝 Step 3 - Update text:', updateText || '(none)');
-    console.log('🏁 Step 3 - Game over status:', isFinal ? 'Final' : 'In progress');
+    // Proceeding with update
 
     const token = getAuthToken();
     if (!token) {
-      console.error('❌ Step 3 - Authentication failed: No token found');
       handleAuthError('No authentication token found');
       return;
     }
-    
-    console.log('✅ Step 3 - Authentication token validated successfully');
 
     try {
-      // Log complete request details for debugging
-      console.log('🔍 PATCH Request details:', {
-        url: `/api/games/${gameId}`,
-        token: token ? `${token.substring(0, 10)}...` : 'none',
-        ehsScore: parseInt(ehsScore, 10),
-        oppScore: parseInt(oppScore, 10),
-        updateText: updateText,
-        isFinal: isFinal,
-        qtr: qtr,
-        timeInqtr: timeInqtr
-      });
-      
       // Create request body with or without final field based on checkbox
       const requestBody: any = { 
         ehsScore: parseInt(ehsScore, 10),
@@ -407,55 +375,25 @@ const toTitleCase = (str: string) => {
         body: JSON.stringify(requestBody)
       });
       
-      console.log('🔄 PATCH Response status:', response.status);
+      
 
       let result;
       try {
         result = await response.json() as ApiResponse<{ updates: GameUpdate[] }>;
-      } catch (jsonError) {
-        console.error('❌ JSON Parse Error:', jsonError);
-        // Clone the response to read text without consuming the stream
-        const responseClone = response.clone();
-        try {
-          const responseText = await responseClone.text();
-          console.error('❌ Raw response:', responseText);
-          
-          // Display visible error for debugging
-          target.textContent = 'JSON Parse Error';
-          target.style.backgroundColor = '#d9534f';
-          
-          // Add more visible debugging to page
-          const errorDiv = document.createElement('div');
-          errorDiv.style.color = 'red';
-          errorDiv.style.fontFamily = 'monospace';
-          errorDiv.style.whiteSpace = 'pre-wrap';
-          errorDiv.style.padding = '10px';
-          errorDiv.style.margin = '10px 0';
-          errorDiv.style.border = '1px solid red';
-          errorDiv.textContent = `Error parsing JSON: ${responseText.substring(0, 500)}${responseText.length > 500 ? '...' : ''}`;
-          card.appendChild(errorDiv);
-          
-        } catch (textError) {
-          console.error('❌ Could not read response text:', textError);
-        }
+      } catch (_) {
         throw new Error('Invalid JSON response from server');
       }
       
       if (!response.ok) {
-        console.error('❌ PATCH Request Failed - Status:', response.status);
-        console.error('❌ PATCH Response:', result);
-        
         if (response.status === 401) {
-          console.error('❌ 401 Unauthorized - Token may be invalid or expired');
-          // Don't immediately redirect, let user see the error
-          target.textContent = 'Auth Error - Check Console';
+          target.textContent = 'Auth Error';
           target.style.backgroundColor = '#d9534f';
           setTimeout(() => {
             handleAuthError('Session expired');
-          }, 5000); // Give 5 seconds to read console
+          }, 500);
           return;
         }
-        throw new Error(result.error || 'Failed to update score');
+        throw new Error((result as any).error || 'Failed to update score');
       }
 
       // Clear the update input
@@ -484,7 +422,6 @@ const toTitleCase = (str: string) => {
       }, 2000);
 
     } catch (error) {
-      console.error('Update Error:', error);
       if (error instanceof Error && error.message.includes('token')) {
         handleAuthError('Invalid session');
         return;
@@ -502,18 +439,11 @@ const toTitleCase = (str: string) => {
 
   // Load update history for all games on page load
   document.addEventListener('DOMContentLoaded', () => {
-    console.log('🚀 AdminScoreboardDisplay script loaded');
-    console.log('📄 Current page body dataset:', document.body.dataset);
-    console.log('🎯 Game cards found:', document.querySelectorAll('.game-card').length);
-    console.log('🔘 Update buttons found:', document.querySelectorAll('.update-button').length);
-    
-    // Check if we're on the admin page
+    // Only run on admin page
     const isAdminPage = document.querySelector('[data-page="admin"]') !== null;
     if (!isAdminPage) {
-      console.log('❌ Not on admin page, skipping initialization');
       return;
     }
-    console.log('✅ Admin page confirmed');
     
     document.querySelectorAll('.game-card').forEach(card => {
       const gameId = (card as HTMLElement).dataset.gameId;

@@ -17,21 +17,16 @@ const $$Index = createComponent(async ($$result, $$props, $$slots) => {
       games = await gamesResponse.json();
       for (const game of games) {
         const updatesResponse = await fetch(`${Astro2.url.origin}/api/games/${game.id}/updates`);
-        console.log(`Fetching updates for game ${game.id}: ${updatesResponse.status}`);
         if (updatesResponse.ok) {
           const updates = await updatesResponse.json();
-          console.log(`Game ${game.id} updates:`, updates);
           game.updates = updates;
         } else {
-          console.error(`Updates API Error: ${updatesResponse.status} ${updatesResponse.statusText}`);
           game.updates = [];
         }
       }
     } else {
-      console.error(`API Error: ${gamesResponse.status} ${gamesResponse.statusText}`);
     }
   } catch (error) {
-    console.error("Fetch Error:", error.message);
   }
   return renderTemplate`${renderComponent($$result, "Layout", $$Layout, { "title": "Emerson Mavericks Football Scoreboard", "data-astro-cid-j7pv25f6": true }, { "default": async ($$result2) => renderTemplate` ${maybeRenderHead()}<main data-astro-cid-j7pv25f6> <header data-astro-cid-j7pv25f6> <h1 data-astro-cid-j7pv25f6>Emerson Mavericks Football</h1> </header> ${renderComponent($$result2, "ScoreboardFilter", $$ScoreboardFilter, { "data-astro-cid-j7pv25f6": true })} <div class="scoreboard-container" data-astro-cid-j7pv25f6> ${renderComponent($$result2, "ScoreboardDisplay", $$ScoreboardDisplay, { "games": games, "data-astro-cid-j7pv25f6": true })} </div> <!-- Debug section removed --> </main> ` })}  `;
 }, "/Users/kisha/serverless/scoreboard/src/pages/index.astro", void 0);
