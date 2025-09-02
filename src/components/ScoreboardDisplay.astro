@@ -131,12 +131,31 @@ const toTitleCase = (str: string) => {
     margin: 0.5rem 0 0 0;
     font-size: 0.85rem;
   }
-  
+
   .update-item {
     padding: 0.5rem;
     margin-bottom: 0.5rem;
     background-color: #f9f9f9;
     border-left: 3px solid #ddd;
+  }
+  
+  /* Layout for update text and timestamp */
+  .update-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+  .update-text {
+    flex: 1 1 auto;
+    min-width: 0; /* allow text to wrap nicely */
+    word-break: break-word;
+  }
+  .update-timestamp {
+    flex: 0 0 auto;
+    font-size: 0.5em; /* half size of the update text */
+    color: #777;
+    white-space: nowrap;
   }
 </style>
 
@@ -166,7 +185,12 @@ const toTitleCase = (str: string) => {
   function formatCentralTime(dateStr) {
     const d = parseDbDate(dateStr);
     if (isNaN(d.getTime())) return String(dateStr || '');
-    return d.toLocaleString('en-US', { timeZone: 'America/Chicago' });
+    // Show only hour:minute for mobile-friendly display
+    return d.toLocaleTimeString('en-US', {
+      timeZone: 'America/Chicago',
+      hour: 'numeric',
+      minute: '2-digit'
+    });
   }
 
   document.addEventListener('DOMContentLoaded', () => {
