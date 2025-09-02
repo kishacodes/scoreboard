@@ -3955,7 +3955,15 @@ app.get("/api/games", async (c) => {
   if (conditions.length > 0) {
     query += " WHERE " + conditions.join(" AND ");
   }
-  query += " ORDER BY gameDate ASC";
+  const centralNow = new Date(
+    (/* @__PURE__ */ new Date()).toLocaleString("en-US", { timeZone: "America/Chicago" })
+  );
+  const yyyy = centralNow.getFullYear();
+  const mm = String(centralNow.getMonth() + 1).padStart(2, "0");
+  const dd = String(centralNow.getDate()).padStart(2, "0");
+  const todayCentral = `${yyyy}-${mm}-${dd}`;
+  query += " ORDER BY CASE WHEN gameDate >= ? THEN 0 ELSE 1 END ASC, gameDate ASC";
+  bindings.push(todayCentral);
   try {
     const { results } = await c.env.DB.prepare(query).bind(...bindings).all();
     c.header("Cache-Control", "public, max-age=30, s-maxage=120, stale-while-revalidate=60");

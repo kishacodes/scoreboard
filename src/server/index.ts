@@ -52,7 +52,18 @@ app.get('/api/games', async (c) => {
     query += " WHERE " + conditions.join(" AND ");
   }
 
-  query += " ORDER BY gameDate ASC";
+  // Compute today's date in Central Time (America/Chicago) as YYYY-MM-DD
+  const centralNow = new Date(
+    new Date().toLocaleString('en-US', { timeZone: 'America/Chicago' })
+  );
+  const yyyy = centralNow.getFullYear();
+  const mm = String(centralNow.getMonth() + 1).padStart(2, '0');
+  const dd = String(centralNow.getDate()).padStart(2, '0');
+  const todayCentral = `${yyyy}-${mm}-${dd}`;
+
+  // Upcoming (today or later) first, then past; then by date ascending
+  query += " ORDER BY CASE WHEN gameDate >= ? THEN 0 ELSE 1 END ASC, gameDate ASC";
+  bindings.push(todayCentral);
 
   try {
     // In middleware, we get the env from Astro.locals.runtime.env

@@ -88,10 +88,10 @@
     font-size: 0.85rem;
   }
   .update-item {
-    padding: 0.5rem;
+    padding: 0.5rem 0;
     margin-bottom: 0.5rem;
     background-color: #f9f9f9;
-    border-left: 3px solid #ddd;
+    border-left: none;
   }
   .update-row {
     display: flex;
@@ -103,6 +103,16 @@
     flex: 1 1 auto;
     min-width: 0;
     word-break: break-word;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .update-text.expanded {
+    -webkit-line-clamp: unset;
+    overflow: visible;
+    display: block;
   }
   .update-timestamp {
     flex: 0 0 auto;
@@ -217,6 +227,39 @@
                 : '';
               return `<li class=\"update-item\">\n                <div class=\"update-row\">\n                  <span class=\"update-text\" title=\"${escapeHtml(u.update_text)}\">${escapeHtml(u.update_text)}</span>\n                  <span class=\"update-timestamp\">${escapeHtml(formatCentralTime(u.created_at))}</span>\n                </div>\n                ${meta}\n              </li>`;
             }).join('');
+          }
+          // Allow tapping/clicking text to expand inline on all devices
+          if (list) {
+            const texts = list.querySelectorAll('.update-text');
+            texts.forEach((el) => {
+              const span = el as HTMLElement;
+              // Always make interactive so click/tap responds even if truncation detection is flaky
+              span.setAttribute('role', 'button');
+              span.setAttribute('tabindex', '0');
+              span.setAttribute('aria-expanded', 'false');
+              span.style.cursor = 'pointer';
+              const toggle = () => {
+                const expanded = span.classList.toggle('expanded');
+                span.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+              };
+              span.addEventListener('click', toggle);
+              span.addEventListener('keydown', (e: KeyboardEvent) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  toggle();
+                }
+              });
+              // After layout, set aria only-if-truncated for better semantics
+              requestAnimationFrame(() => {
+                const isTruncated = span.scrollHeight > span.clientHeight;
+                if (!isTruncated) {
+                  span.removeAttribute('role');
+                  span.removeAttribute('tabindex');
+                  span.removeAttribute('aria-expanded');
+                  span.style.cursor = '';
+                }
+              });
+            });
           }
           details.setAttribute('data-loaded', 'true');
         } catch (_) {
