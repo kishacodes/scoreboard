@@ -137,6 +137,9 @@ const CREATE_UPDATES_TABLE = `
     game_id INTEGER NOT NULL,
     user_email TEXT NOT NULL,
     update_text TEXT NOT NULL,
+    ehs_score INTEGER,
+    opp_score INTEGER,
+    qtr TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (game_id) REFERENCES games2025(id)
   )
@@ -271,6 +274,10 @@ app.use('*', async (c, next) => {
 app.use('*', async (c, next) => {
   try {
     await c.env.DB.prepare(CREATE_UPDATES_TABLE).run();
+    // Best-effort schema migration: add missing columns if table already existed
+    try { await c.env.DB.prepare("ALTER TABLE game_updates ADD COLUMN ehs_score INTEGER").run(); } catch (e) {}
+    try { await c.env.DB.prepare("ALTER TABLE game_updates ADD COLUMN opp_score INTEGER").run(); } catch (e) {}
+    try { await c.env.DB.prepare("ALTER TABLE game_updates ADD COLUMN qtr TEXT").run(); } catch (e) {}
   } catch (e) {
     // ignore create table errors
   }
@@ -342,9 +349,9 @@ app.patch('/api/games/:id', async (c) => {
     if (updateText && userEmail) {
       statements.push(
         c.env.DB.prepare(
-          `INSERT INTO game_updates (game_id, user_email, update_text) 
-           VALUES (?, ?, ?)`
-        ).bind(id, userEmail, updateText)
+          `INSERT INTO game_updates (game_id, user_email, update_text, ehs_score, opp_score, qtr) 
+           VALUES (?, ?, ?, ?, ?, ?)`
+        ).bind(id, userEmail, updateText, ehsScore, oppScore, qtr || null)
       );
     }
     
@@ -377,7 +384,8 @@ app.get('/api/games/:id/updates', async (c) => {
   
   try {
     const { results } = await c.env.DB.prepare(`
-      SELECT id, game_id, user_email, update_text, 
+      SELECT id, game_id, user_email, update_text,
+             ehs_score, opp_score, qtr,
              strftime('%Y-%m-%d %H:%M', created_at) as created_at
       FROM game_updates 
       WHERE game_id = ? 
@@ -415,6 +423,7 @@ app.get('/api/games/updates', async (c) => {
   const placeholders = gameIds.map(() => '?').join(',');
   const sql = `
     SELECT id, game_id, user_email, update_text,
+           ehs_score, opp_score, qtr,
            strftime('%Y-%m-%d %H:%M', created_at) as created_at
     FROM game_updates
     WHERE game_id IN (${placeholders})

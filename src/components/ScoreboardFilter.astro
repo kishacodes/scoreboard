@@ -110,6 +110,11 @@
     color: #777;
     white-space: nowrap;
   }
+  .update-meta {
+    margin-top: 0.25rem;
+    font-size: 0.8em;
+    color: #555;
+  }
 </style>
 
 <script>
@@ -200,12 +205,18 @@
             summary.textContent = updates.length > 0 ? `Recent Updates (${updates.length})` : 'Recent Updates (0)';
           }
           if (!list) return;
+          const teamEls = card.querySelectorAll('.team .team-name');
+          const ehsName = teamEls[0]?.textContent?.trim() || 'EHS';
+          const oppName = teamEls[1]?.textContent?.trim() || 'Opponent';
           if (!updates || updates.length === 0) {
             list.innerHTML = '<li class="update-item"><div class="update-row"><span class="update-text">No updates yet</span><span class="update-timestamp"></span></div></li>';
           } else {
-            list.innerHTML = updates.map((u: any) =>
-              `<li class=\"update-item\"><div class=\"update-row\"><span class=\"update-text\" title=\"${escapeHtml(u.update_text)}\">${escapeHtml(u.update_text)}</span><span class=\"update-timestamp\">${escapeHtml(formatCentralTime(u.created_at))}</span></div></li>`
-            ).join('');
+            list.innerHTML = updates.map((u: any) => {
+              const meta = (u.qtr || u.ehs_score != null || u.opp_score != null)
+                ? `<div class=\"update-meta\">${escapeHtml(u.qtr || '')}${u.qtr ? ': ' : ''}${escapeHtml(ehsName)} ${escapeHtml(String(u.ehs_score ?? ''))}, ${escapeHtml(oppName)} ${escapeHtml(String(u.opp_score ?? ''))}</div>`
+                : '';
+              return `<li class=\"update-item\">\n                <div class=\"update-row\">\n                  <span class=\"update-text\" title=\"${escapeHtml(u.update_text)}\">${escapeHtml(u.update_text)}</span>\n                  <span class=\"update-timestamp\">${escapeHtml(formatCentralTime(u.created_at))}</span>\n                </div>\n                ${meta}\n              </li>`;
+            }).join('');
           }
           details.setAttribute('data-loaded', 'true');
         } catch (_) {
